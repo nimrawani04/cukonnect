@@ -8,6 +8,7 @@ import Search from "./pages/Search.tsx";
 import RideDetail from "./pages/RideDetail.tsx";
 import Publish from "./pages/Publish.tsx";
 import PublishRide from "./pages/PublishRide.tsx";
+import Trips from "./pages/Trips.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/ride/:id" element={<RideDetail />} />
           <Route path="/publish" element={<Publish />} />
           <Route path="/publish/new" element={<PublishRide />} />
+          <Route path="/trips" element={<Trips />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
