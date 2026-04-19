@@ -26,10 +26,12 @@ const Publish = () => {
               a minute and let trusted passengers chip in for fuel.
             </p>
             <div className="mt-7 flex gap-3">
-              <Button size="lg" className="rounded-full bg-accent text-accent-foreground hover:bg-accent/90">
-                Publish a ride
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
+              <Link to="/publish/new">
+                <Button size="lg" className="rounded-full bg-accent text-accent-foreground hover:bg-accent/90">
+                  Publish a ride
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
               <Link to="/">
                 <Button size="lg" variant="outline" className="rounded-full">
                   Find a ride instead
