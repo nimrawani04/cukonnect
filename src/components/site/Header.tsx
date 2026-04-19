@@ -10,6 +10,7 @@ import {
 const navLinks = [
   { to: "/", label: "Find a ride" },
   { to: "/publish", label: "Publish a ride" },
+  { to: "/trips", label: "My trips" },
   { to: "/about", label: "How it works" },
 ];
 
