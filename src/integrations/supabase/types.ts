@@ -14,7 +14,155 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bookings: {
+        Row: {
+          cancellation_reason: string | null
+          created_at: string
+          id: string
+          passenger_id: string
+          payment_status: Database["public"]["Enums"]["payment_status"]
+          ride_id: string
+          seats_booked: number
+          status: Database["public"]["Enums"]["booking_status"]
+          updated_at: string
+        }
+        Insert: {
+          cancellation_reason?: string | null
+          created_at?: string
+          id?: string
+          passenger_id: string
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          ride_id: string
+          seats_booked?: number
+          status?: Database["public"]["Enums"]["booking_status"]
+          updated_at?: string
+        }
+        Update: {
+          cancellation_reason?: string | null
+          created_at?: string
+          id?: string
+          passenger_id?: string
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          ride_id?: string
+          seats_booked?: number
+          status?: Database["public"]["Enums"]["booking_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          phone: string | null
+          rating: number
+          trips_count: number
+          updated_at: string
+          user_id: string
+          verified: boolean
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          phone?: string | null
+          rating?: number
+          trips_count?: number
+          updated_at?: string
+          user_id: string
+          verified?: boolean
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          phone?: string | null
+          rating?: number
+          trips_count?: number
+          updated_at?: string
+          user_id?: string
+          verified?: boolean
+        }
+        Relationships: []
+      }
+      rides: {
+        Row: {
+          amenities: string[] | null
+          arrive_time: string
+          car: string | null
+          created_at: string
+          depart_time: string
+          driver_id: string
+          duration: string | null
+          from_location: string
+          id: string
+          instant_book: boolean
+          price_per_seat: number
+          ride_date: string
+          rules: Json | null
+          seats_left: number
+          seats_total: number
+          status: Database["public"]["Enums"]["ride_status"]
+          stops: string[] | null
+          to_location: string
+          updated_at: string
+        }
+        Insert: {
+          amenities?: string[] | null
+          arrive_time: string
+          car?: string | null
+          created_at?: string
+          depart_time: string
+          driver_id: string
+          duration?: string | null
+          from_location: string
+          id?: string
+          instant_book?: boolean
+          price_per_seat: number
+          ride_date: string
+          rules?: Json | null
+          seats_left?: number
+          seats_total?: number
+          status?: Database["public"]["Enums"]["ride_status"]
+          stops?: string[] | null
+          to_location: string
+          updated_at?: string
+        }
+        Update: {
+          amenities?: string[] | null
+          arrive_time?: string
+          car?: string | null
+          created_at?: string
+          depart_time?: string
+          driver_id?: string
+          duration?: string | null
+          from_location?: string
+          id?: string
+          instant_book?: boolean
+          price_per_seat?: number
+          ride_date?: string
+          rules?: Json | null
+          seats_left?: number
+          seats_total?: number
+          status?: Database["public"]["Enums"]["ride_status"]
+          stops?: string[] | null
+          to_location?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +171,9 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      booking_status: "pending" | "confirmed" | "cancelled" | "completed"
+      payment_status: "paid" | "cash" | "refunded"
+      ride_status: "active" | "completed" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +300,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      booking_status: ["pending", "confirmed", "cancelled", "completed"],
+      payment_status: ["paid", "cash", "refunded"],
+      ride_status: ["active", "completed", "cancelled"],
+    },
   },
 } as const

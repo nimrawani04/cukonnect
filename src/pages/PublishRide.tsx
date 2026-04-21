@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, ArrowRight, ArrowRightLeft, Check, MapPin, Calendar as CalendarIcon,
@@ -17,6 +17,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Stop = { id: string; name: string };
 type LuggageSize = "small" | "medium" | "large";
@@ -56,7 +58,9 @@ const newId = () => Math.random().toString(36).slice(2, 9);
 
 const PublishRide = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const [step, setStep] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
   const [data, setData] = useState<FormState>({
     from: "Srinagar",
     to: "Jammu",
@@ -72,6 +76,13 @@ const PublishRide = () => {
     notes: "",
     instantBook: true,
   });
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      toast.error("Please sign in to publish a ride");
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate]);
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setData((d) => ({ ...d, [key]: value }));
@@ -104,11 +115,55 @@ const PublishRide = () => {
   };
   const back = () => (step > 1 ? setStep(step - 1) : navigate("/publish"));
 
-  const submit = () => {
-    toast.success("Your ride has been published!", {
-      description: `${data.from} → ${data.to} on ${data.date ? format(data.date, "EEE, dd MMM") : ""}`,
-    });
-    setTimeout(() => navigate("/"), 1200);
+  const submit = async () => {
+    if (!user) {
+      toast.error("Please sign in first");
+      return navigate("/auth");
+    }
+    if (!data.date) return toast.error("Please pick a date");
+    setSubmitting(true);
+    try {
+      const amenities = [
+        data.rules.ac ? "AC" : null,
+        data.rules.music ? "Music" : null,
+      ].filter(Boolean) as string[];
+
+      const { error } = await supabase.from("rides").insert({
+        driver_id: user.id,
+        from_location: data.from,
+        to_location: data.to,
+        ride_date: format(data.date, "yyyy-MM-dd"),
+        depart_time: data.departTime,
+        arrive_time: data.arriveTime,
+        price_per_seat: data.pricePerSeat,
+        seats_total: data.seats,
+        seats_left: data.seats,
+        car: data.car,
+        stops: data.stops.map((s) => s.name),
+        amenities,
+        rules: {
+          smoking: data.rules.smoking,
+          pets: data.rules.pets,
+          music: data.rules.music,
+          chatty: data.rules.chatty,
+          ac: data.rules.ac,
+          luggage: data.luggage,
+          notes: data.notes,
+        },
+        instant_book: data.instantBook,
+        status: "active",
+      });
+      if (error) throw error;
+
+      toast.success("Your ride has been published!", {
+        description: `${data.from} → ${data.to} on ${format(data.date, "EEE, dd MMM")}`,
+      });
+      setTimeout(() => navigate("/trips"), 900);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Could not publish ride");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -201,10 +256,11 @@ const PublishRide = () => {
                 ) : (
                   <Button
                     onClick={submit}
+                    disabled={submitting}
                     size="lg"
                     className="rounded-full bg-accent text-accent-foreground shadow-glow hover:bg-accent/90"
                   >
-                    Publish ride
+                    {submitting ? "Publishing…" : "Publish ride"}
                     <Check className="ml-2 h-4 w-4" />
                   </Button>
                 )}
