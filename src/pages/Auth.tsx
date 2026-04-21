@@ -1,0 +1,135 @@
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Mountain, ArrowLeft } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+
+const Auth = () => {
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!loading && user) navigate("/trips", { replace: true });
+  }, [user, loading, navigate]);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      if (mode === "signup") {
+        const redirectUrl = `${window.location.origin}/trips`;
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: redirectUrl,
+            data: { display_name: displayName || email.split("@")[0] },
+          },
+        });
+        if (error) throw error;
+        toast.success("Welcome aboard!", { description: "Your account has been created." });
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        toast.success("Signed in");
+      }
+    } catch (err: any) {
+      toast.error(err?.message ?? "Something went wrong");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-sky">
+      <div className="container flex min-h-screen flex-col items-center justify-center py-10">
+        <Link to="/" className="mb-6 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" />
+          Back to home
+        </Link>
+
+        <div className="w-full max-w-md rounded-3xl bg-card p-8 shadow-card ring-1 ring-border/60">
+          <div className="flex flex-col items-center text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-primary text-primary-foreground shadow-soft">
+              <Mountain className="h-6 w-6" />
+            </span>
+            <h1 className="mt-4 font-display text-2xl font-extrabold">
+              {mode === "signup" ? "Create your account" : "Welcome back"}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {mode === "signup"
+                ? "Join Kashmir's intercity ride network."
+                : "Sign in to book rides and manage trips."}
+            </p>
+          </div>
+
+          <form onSubmit={submit} className="mt-8 space-y-4">
+            {mode === "signup" && (
+              <div>
+                <Label htmlFor="name">Full name</Label>
+                <Input
+                  id="name"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Bilal Ahmad"
+                  className="mt-2 h-12 rounded-xl"
+                />
+              </div>
+            )}
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="mt-2 h-12 rounded-xl"
+              />
+            </div>
+            <div>
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="At least 6 characters"
+                className="mt-2 h-12 rounded-xl"
+              />
+            </div>
+
+            <Button type="submit" disabled={busy} className="h-12 w-full rounded-full text-base">
+              {busy ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}
+            </Button>
+          </form>
+
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            {mode === "signup" ? "Already have an account?" : "New to CuKashmir?"}{" "}
+            <button
+              type="button"
+              onClick={() => setMode(mode === "signup" ? "signin" : "signup")}
+              className="font-semibold text-primary hover:underline"
+            >
+              {mode === "signup" ? "Sign in" : "Create one"}
+            </button>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Auth;

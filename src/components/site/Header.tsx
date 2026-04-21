@@ -1,11 +1,12 @@
-import { Link, useLocation } from "react-router-dom";
-import { Mountain, Menu } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Mountain, Menu, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navLinks = [
   { to: "/", label: "Find a ride" },
@@ -16,6 +17,8 @@ const navLinks = [
 
 const Header = () => {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/80 backdrop-blur-lg">
       <div className="container flex h-16 items-center justify-between">
@@ -45,12 +48,26 @@ const Header = () => {
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
-          <Button variant="ghost" size="sm">
-            Sign in
-          </Button>
-          <Button size="sm" className="rounded-full">
-            Get started
-          </Button>
+          {user ? (
+            <>
+              <span className="text-sm text-muted-foreground">
+                {user.email}
+              </span>
+              <Button variant="ghost" size="sm" onClick={() => signOut()}>
+                <LogOut className="mr-1 h-4 w-4" />
+                Sign out
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => navigate("/auth")}>
+                Sign in
+              </Button>
+              <Button size="sm" className="rounded-full" onClick={() => navigate("/auth")}>
+                Get started
+              </Button>
+            </>
+          )}
         </div>
 
         <Sheet>
@@ -71,8 +88,17 @@ const Header = () => {
                 </Link>
               ))}
               <div className="mt-4 flex flex-col gap-2 border-t pt-4">
-                <Button variant="outline">Sign in</Button>
-                <Button>Get started</Button>
+                {user ? (
+                  <Button variant="outline" onClick={() => signOut()}>
+                    <LogOut className="mr-1 h-4 w-4" />
+                    Sign out
+                  </Button>
+                ) : (
+                  <>
+                    <Button variant="outline" onClick={() => navigate("/auth")}>Sign in</Button>
+                    <Button onClick={() => navigate("/auth")}>Get started</Button>
+                  </>
+                )}
               </div>
             </div>
           </SheetContent>
