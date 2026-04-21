@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import RideChat from "@/components/site/RideChat";
 
 type RideRow = {
   id: string;
@@ -310,6 +311,15 @@ const RideDetail = () => {
                 <Info icon={<Wifi className="h-4 w-4" />} label="Wi-Fi" value={amenities.includes("Wi-Fi") ? "Yes" : "No"} />
               </div>
             </div>
+
+            {/* Chat: visible to driver and to passengers with an active booking */}
+            {user && (isOwnRide || (myBooking && myBooking.status !== "cancelled")) && (
+              <RideChat
+                rideId={ride.id}
+                driverId={ride.driver_id}
+                driverName={driverName}
+              />
+            )}
           </div>
 
           {/* Sticky booking */}
