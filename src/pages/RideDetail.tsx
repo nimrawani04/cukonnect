@@ -1,17 +1,200 @@
-import { useParams, Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   Star, ShieldCheck, Zap, MapPin, Clock, Car, Music2, Wifi, Snowflake,
-  MessageCircle, ChevronLeft,
+  MessageCircle, ChevronLeft, Loader2, CheckCircle2, XCircle, AlertCircle,
 } from "lucide-react";
 import Header from "@/components/site/Header";
 import Footer from "@/components/site/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MOCK_RIDES } from "@/data/rides";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+
+type RideRow = {
+  id: string;
+  driver_id: string;
+  from_location: string;
+  to_location: string;
+  ride_date: string;
+  depart_time: string;
+  arrive_time: string;
+  duration: string | null;
+  price_per_seat: number;
+  seats_total: number;
+  seats_left: number;
+  car: string | null;
+  stops: string[] | null;
+  amenities: string[] | null;
+  rules: Record<string, unknown> | null;
+  instant_book: boolean;
+  status: "active" | "completed" | "cancelled";
+};
+
+type DriverProfile = {
+  user_id: string;
+  display_name: string | null;
+  rating: number;
+  trips_count: number;
+  verified: boolean;
+};
+
+type BookingRow = {
+  id: string;
+  status: "pending" | "confirmed" | "cancelled" | "completed";
+  seats_booked: number;
+  payment_status: "paid" | "cash" | "refunded";
+};
+
+const initialsFor = (name: string | null | undefined) => {
+  if (!name) return "U";
+  return name
+    .split(" ")
+    .map((p) => p[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+};
+
+const formatRules = (rules: Record<string, unknown> | null): string[] => {
+  if (!rules) return [];
+  const out: string[] = [];
+  for (const [k, v] of Object.entries(rules)) {
+    if (typeof v === "boolean") {
+      out.push(`${v ? "✓" : "✗"} ${k.replace(/_/g, " ")}`);
+    } else {
+      out.push(`${k.replace(/_/g, " ")}: ${String(v)}`);
+    }
+  }
+  return out;
+};
 
 const RideDetail = () => {
   const { id } = useParams();
-  const ride = MOCK_RIDES.find((r) => r.id === id) ?? MOCK_RIDES[0];
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const [loading, setLoading] = useState(true);
+  const [ride, setRide] = useState<RideRow | null>(null);
+  const [driver, setDriver] = useState<DriverProfile | null>(null);
+  const [myBooking, setMyBooking] = useState<BookingRow | null>(null);
+  const [booking, setBooking] = useState(false);
+
+  const load = async () => {
+    if (!id) return;
+    setLoading(true);
+
+    const { data: rideData, error: rideErr } = await supabase
+      .from("rides")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (rideErr || !rideData) {
+      setRide(null);
+      setLoading(false);
+      return;
+    }
+    setRide(rideData as RideRow);
+
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("user_id, display_name, rating, trips_count, verified")
+      .eq("user_id", rideData.driver_id)
+      .maybeSingle();
+    setDriver(profileData as DriverProfile | null);
+
+    if (user) {
+      const { data: bookingData } = await supabase
+        .from("bookings")
+        .select("id, status, seats_booked, payment_status")
+        .eq("ride_id", id)
+        .eq("passenger_id", user.id)
+        .maybeSingle();
+      setMyBooking(bookingData as BookingRow | null);
+    } else {
+      setMyBooking(null);
+    }
+
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, user?.id]);
+
+  const isOwnRide = user && ride && user.id === ride.driver_id;
+  const ruleList = useMemo(() => formatRules(ride?.rules ?? null), [ride?.rules]);
+
+  const handleBook = async () => {
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+    if (!ride) return;
+    if (ride.seats_left < 1) {
+      toast.error("No seats left on this ride");
+      return;
+    }
+    setBooking(true);
+    const { data, error } = await supabase
+      .from("bookings")
+      .insert({
+        ride_id: ride.id,
+        passenger_id: user.id,
+        seats_booked: 1,
+        status: ride.instant_book ? "confirmed" : "pending",
+      })
+      .select("id, status, seats_booked, payment_status")
+      .maybeSingle();
+    setBooking(false);
+
+    if (error || !data) {
+      toast.error(error?.message ?? "Could not book this seat");
+      return;
+    }
+    setMyBooking(data as BookingRow);
+    toast.success(
+      ride.instant_book ? "Seat confirmed! See it in My trips." : "Request sent to driver",
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-muted/20">
+        <Header />
+        <div className="container flex min-h-[60vh] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!ride) {
+    return (
+      <div className="min-h-screen bg-muted/20">
+        <Header />
+        <div className="container py-20 text-center">
+          <h1 className="font-display text-2xl font-bold">Ride not found</h1>
+          <p className="mt-2 text-muted-foreground">
+            This ride may have been cancelled or removed.
+          </p>
+          <Button asChild className="mt-6 rounded-full">
+            <Link to="/search">Browse rides</Link>
+          </Button>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  const driverName = driver?.display_name ?? "Driver";
+  const stops = ride.stops ?? [];
+  const amenities = ride.amenities ?? [];
 
   return (
     <div className="min-h-screen bg-muted/20">
@@ -30,41 +213,59 @@ const RideDetail = () => {
             <div className="rounded-3xl bg-card p-8 shadow-card ring-1 ring-border/60">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <MapPin className="h-4 w-4" />
-                {ride.from} → {ride.to} · {new Date(ride.date).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
+                {ride.from_location} → {ride.to_location} ·{" "}
+                {new Date(ride.ride_date).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
               </div>
 
               <div className="mt-6 grid grid-cols-[1fr_auto_1fr] items-center gap-6">
                 <div>
-                  <div className="font-display text-3xl font-extrabold md:text-4xl">{ride.departTime}</div>
-                  <div className="mt-1 text-sm text-muted-foreground">{ride.from}</div>
+                  <div className="font-display text-3xl font-extrabold md:text-4xl">{ride.depart_time}</div>
+                  <div className="mt-1 text-sm text-muted-foreground">{ride.from_location}</div>
                 </div>
                 <div className="flex flex-col items-center text-xs text-muted-foreground">
                   <Clock className="mb-1 h-4 w-4" />
-                  {ride.duration}
+                  {ride.duration ?? "—"}
                 </div>
                 <div className="text-right">
-                  <div className="font-display text-3xl font-extrabold md:text-4xl">{ride.arriveTime}</div>
-                  <div className="mt-1 text-sm text-muted-foreground">{ride.to}</div>
+                  <div className="font-display text-3xl font-extrabold md:text-4xl">{ride.arrive_time}</div>
+                  <div className="mt-1 text-sm text-muted-foreground">{ride.to_location}</div>
                 </div>
               </div>
 
               {/* Stops */}
-              {ride.stops && (
+              {stops.length > 0 && (
                 <div className="mt-8 border-t border-border/60 pt-6">
                   <h3 className="mb-4 text-sm font-semibold">Pickup & drop points</h3>
                   <ol className="relative ml-2 space-y-4 border-l-2 border-dashed border-border pl-6">
-                    {ride.stops.map((s, i) => (
-                      <li key={s} className="relative">
+                    {stops.map((s, i) => (
+                      <li key={`${s}-${i}`} className="relative">
                         <span className={`absolute -left-[31px] top-1 flex h-5 w-5 items-center justify-center rounded-full ring-4 ring-background ${
-                          i === 0 ? "bg-primary" : i === ride.stops!.length - 1 ? "bg-secondary" : "bg-muted-foreground/40"
+                          i === 0 ? "bg-primary" : i === stops.length - 1 ? "bg-secondary" : "bg-muted-foreground/40"
                         }`} />
                         <div className="text-sm font-medium">{s}</div>
                         <div className="text-xs text-muted-foreground">
-                          {i === 0 ? "Pickup" : i === ride.stops!.length - 1 ? "Drop-off" : "Stop"}
+                          {i === 0 ? "Pickup" : i === stops.length - 1 ? "Drop-off" : "Stop"}
                         </div>
                       </li>
                     ))}
                   </ol>
+                </div>
+              )}
+
+              {/* Rules */}
+              {ruleList.length > 0 && (
+                <div className="mt-8 border-t border-border/60 pt-6">
+                  <h3 className="mb-4 text-sm font-semibold">Ride rules</h3>
+                  <ul className="grid gap-2 sm:grid-cols-2">
+                    {ruleList.map((r) => (
+                      <li
+                        key={r}
+                        className="flex items-center gap-2 rounded-xl bg-muted/40 px-3 py-2 text-sm capitalize"
+                      >
+                        {r}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </div>
@@ -76,12 +277,12 @@ const RideDetail = () => {
               </h3>
               <div className="flex items-center gap-5">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-primary text-xl font-bold text-primary-foreground shadow-soft">
-                  {ride.driver.initials}
+                  {initialsFor(driverName)}
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <div className="font-display text-lg font-bold">{ride.driver.name}</div>
-                    {ride.driver.verified && (
+                    <div className="font-display text-lg font-bold">{driverName}</div>
+                    {driver?.verified && (
                       <Badge className="gap-1 bg-success/15 text-success hover:bg-success/20">
                         <ShieldCheck className="h-3 w-3" />
                         Verified
@@ -91,48 +292,22 @@ const RideDetail = () => {
                   <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Star className="h-4 w-4 fill-accent text-accent" />
-                      {ride.driver.rating.toFixed(2)}
+                      {(driver?.rating ?? 5).toFixed(2)}
                     </span>
-                    <span>{ride.driver.trips} completed trips</span>
+                    <span>{driver?.trips_count ?? 0} completed trips</span>
                   </div>
                 </div>
-                <Button variant="outline" size="sm" className="rounded-full">
+                <Button variant="outline" size="sm" className="rounded-full" disabled>
                   <MessageCircle className="mr-2 h-4 w-4" />
                   Message
                 </Button>
               </div>
 
               <div className="mt-6 grid gap-3 border-t border-border/60 pt-6 sm:grid-cols-2">
-                <Info icon={<Car className="h-4 w-4" />} label="Vehicle" value={ride.car} />
-                <Info icon={<Snowflake className="h-4 w-4" />} label="AC" value="Yes" />
-                <Info icon={<Music2 className="h-4 w-4" />} label="Music" value="On request" />
-                <Info icon={<Wifi className="h-4 w-4" />} label="Wi-Fi" value={ride.amenities.includes("Wi-Fi") ? "Yes" : "No"} />
-              </div>
-            </div>
-
-            {/* Reviews */}
-            <div className="rounded-3xl bg-card p-8 shadow-soft ring-1 ring-border/60">
-              <h3 className="mb-5 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                Recent reviews
-              </h3>
-              <div className="space-y-5">
-                {[
-                  { name: "Sana K.", stars: 5, text: "Very calm driver, on time and helped with luggage. Smooth ride to Jammu." },
-                  { name: "Imran R.", stars: 5, text: "Great experience. The car was clean and the route via Banihal was scenic." },
-                  { name: "Ayesha M.", stars: 4, text: "Comfortable. Could have been faster but overall good." },
-                ].map((r) => (
-                  <div key={r.name} className="border-t border-border/60 pt-5 first:border-0 first:pt-0">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm font-semibold">{r.name}</div>
-                      <div className="flex items-center gap-0.5">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <Star key={i} className={`h-3.5 w-3.5 ${i < r.stars ? "fill-accent text-accent" : "text-muted"}`} />
-                        ))}
-                      </div>
-                    </div>
-                    <p className="mt-2 text-sm text-muted-foreground">{r.text}</p>
-                  </div>
-                ))}
+                <Info icon={<Car className="h-4 w-4" />} label="Vehicle" value={ride.car ?? "—"} />
+                <Info icon={<Snowflake className="h-4 w-4" />} label="AC" value={amenities.includes("AC") ? "Yes" : "No"} />
+                <Info icon={<Music2 className="h-4 w-4" />} label="Music" value={amenities.includes("Music") ? "Yes" : "On request"} />
+                <Info icon={<Wifi className="h-4 w-4" />} label="Wi-Fi" value={amenities.includes("Wi-Fi") ? "Yes" : "No"} />
               </div>
             </div>
           </div>
@@ -142,10 +317,10 @@ const RideDetail = () => {
             <div className="sticky top-24 rounded-3xl bg-card p-6 shadow-elevated ring-1 ring-border/60">
               <div className="flex items-baseline justify-between">
                 <div>
-                  <div className="font-display text-3xl font-extrabold">₹{ride.pricePerSeat}</div>
+                  <div className="font-display text-3xl font-extrabold">₹{ride.price_per_seat}</div>
                   <div className="text-xs text-muted-foreground">per seat</div>
                 </div>
-                {ride.instantBook && (
+                {ride.instant_book && (
                   <Badge className="gap-1 bg-accent/15 text-accent hover:bg-accent/20">
                     <Zap className="h-3 w-3 fill-accent" />
                     Instant
@@ -154,14 +329,48 @@ const RideDetail = () => {
               </div>
 
               <div className="mt-6 space-y-3 border-y border-border/60 py-5 text-sm">
-                <Row label="Seats available" value={`${ride.seatsLeft}`} />
+                <Row label="Seats available" value={`${ride.seats_left} / ${ride.seats_total}`} />
                 <Row label="Service fee" value="₹0" muted />
-                <Row label="You pay" value={`₹${ride.pricePerSeat}`} bold />
+                <Row label="You pay" value={`₹${ride.price_per_seat}`} bold />
               </div>
 
-              <Button className="mt-5 w-full rounded-full bg-accent text-accent-foreground shadow-glow hover:bg-accent/90" size="lg">
-                Book this seat
-              </Button>
+              {/* Booking state */}
+              {ride.status !== "active" ? (
+                <div className="mt-5 rounded-2xl bg-muted/60 p-4 text-center text-sm text-muted-foreground">
+                  This ride is {ride.status}.
+                </div>
+              ) : isOwnRide ? (
+                <div className="mt-5 rounded-2xl bg-muted/60 p-4 text-center text-sm text-muted-foreground">
+                  This is your published ride. Manage it from{" "}
+                  <Link to="/trips" className="font-semibold text-foreground underline">
+                    My trips
+                  </Link>
+                  .
+                </div>
+              ) : myBooking ? (
+                <BookingStatusCard status={myBooking.status} />
+              ) : (
+                <Button
+                  onClick={handleBook}
+                  disabled={booking || ride.seats_left < 1}
+                  className="mt-5 w-full rounded-full bg-accent text-accent-foreground shadow-glow hover:bg-accent/90"
+                  size="lg"
+                >
+                  {booking ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Booking...
+                    </>
+                  ) : ride.seats_left < 1 ? (
+                    "Sold out"
+                  ) : ride.instant_book ? (
+                    "Book this seat"
+                  ) : (
+                    "Request to book"
+                  )}
+                </Button>
+              )}
+
               <p className="mt-3 text-center text-xs text-muted-foreground">
                 Free cancellation up to 2 hours before departure
               </p>
@@ -171,6 +380,42 @@ const RideDetail = () => {
       </div>
 
       <Footer />
+    </div>
+  );
+};
+
+const BookingStatusCard = ({
+  status,
+}: {
+  status: "pending" | "confirmed" | "cancelled" | "completed";
+}) => {
+  const cfg = {
+    pending: {
+      icon: <AlertCircle className="h-5 w-5" />,
+      label: "Awaiting driver approval",
+      className: "bg-accent/15 text-accent",
+    },
+    confirmed: {
+      icon: <CheckCircle2 className="h-5 w-5" />,
+      label: "Booking confirmed",
+      className: "bg-success/15 text-success",
+    },
+    cancelled: {
+      icon: <XCircle className="h-5 w-5" />,
+      label: "Booking cancelled",
+      className: "bg-destructive/15 text-destructive",
+    },
+    completed: {
+      icon: <CheckCircle2 className="h-5 w-5" />,
+      label: "Trip completed",
+      className: "bg-muted text-foreground",
+    },
+  }[status];
+
+  return (
+    <div className={`mt-5 flex items-center justify-center gap-2 rounded-2xl p-4 text-sm font-semibold ${cfg.className}`}>
+      {cfg.icon}
+      {cfg.label}
     </div>
   );
 };
