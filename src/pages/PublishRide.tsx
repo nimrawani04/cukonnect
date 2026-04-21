@@ -256,10 +256,11 @@ const PublishRide = () => {
                 ) : (
                   <Button
                     onClick={submit}
+                    disabled={submitting}
                     size="lg"
                     className="rounded-full bg-accent text-accent-foreground shadow-glow hover:bg-accent/90"
                   >
-                    Publish ride
+                    {submitting ? "Publishing…" : "Publish ride"}
                     <Check className="ml-2 h-4 w-4" />
                   </Button>
                 )}
