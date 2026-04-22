@@ -3,12 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, ArrowRight, ArrowRightLeft, Check, MapPin, Calendar as CalendarIcon,
   Clock, Users, Coins, Plus, X, Briefcase, Music2, Cigarette, Dog, Sparkles,
-  Snowflake, MessageCircle, Car,
+  Snowflake, MessageCircle, Car, Star,
 } from "lucide-react";
 import { format } from "date-fns";
 import Header from "@/components/site/Header";
 import Footer from "@/components/site/Footer";
 import { CityDataList, KASHMIR_QUICK_ROUTES } from "@/components/site/SearchBar";
+import { mergeFavoritesFirst, useFavoriteRoutes } from "@/hooks/useFavoriteRoutes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
