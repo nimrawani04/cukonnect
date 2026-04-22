@@ -56,6 +56,7 @@ const RideChat = ({ rideId, driverId, driverName }: Props) => {
   const [sending, setSending] = useState(false);
   const [text, setText] = useState("");
   const [names, setNames] = useState<Record<string, string>>({});
+  const [reads, setReads] = useState<ReadReceipt[]>([]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   // Initial load
