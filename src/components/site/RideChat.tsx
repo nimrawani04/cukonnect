@@ -59,23 +59,30 @@ const RideChat = ({ rideId, driverId, driverName }: Props) => {
   const [reads, setReads] = useState<ReadReceipt[]>([]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  // Initial load
+  // Initial load (messages + read receipts)
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("ride_messages")
-        .select("*")
-        .eq("ride_id", rideId)
-        .order("created_at", { ascending: true });
+      const [{ data: msgs, error: msgErr }, { data: rcpts }] = await Promise.all([
+        supabase
+          .from("ride_messages")
+          .select("*")
+          .eq("ride_id", rideId)
+          .order("created_at", { ascending: true }),
+        supabase
+          .from("ride_message_reads")
+          .select("message_id, user_id, read_at")
+          .eq("ride_id", rideId),
+      ]);
       if (cancelled) return;
-      if (error) {
+      if (msgErr) {
         toast.error("Could not load messages");
         setMessages([]);
       } else {
-        setMessages((data ?? []) as Message[]);
+        setMessages((msgs ?? []) as Message[]);
       }
+      setReads((rcpts ?? []) as ReadReceipt[]);
       setLoading(false);
     };
     load();
