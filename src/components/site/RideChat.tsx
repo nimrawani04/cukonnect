@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Send, MessageCircle } from "lucide-react";
+import { Loader2, Send, MessageCircle, Check, CheckCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,13 @@ type Message = {
   sender_id: string;
   body: string;
   created_at: string;
+  _pending?: boolean;
+};
+
+type ReadReceipt = {
+  message_id: string;
+  user_id: string;
+  read_at: string;
 };
 
 type Props = {
@@ -49,25 +56,33 @@ const RideChat = ({ rideId, driverId, driverName }: Props) => {
   const [sending, setSending] = useState(false);
   const [text, setText] = useState("");
   const [names, setNames] = useState<Record<string, string>>({});
+  const [reads, setReads] = useState<ReadReceipt[]>([]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  // Initial load
+  // Initial load (messages + read receipts)
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("ride_messages")
-        .select("*")
-        .eq("ride_id", rideId)
-        .order("created_at", { ascending: true });
+      const [{ data: msgs, error: msgErr }, { data: rcpts }] = await Promise.all([
+        supabase
+          .from("ride_messages")
+          .select("*")
+          .eq("ride_id", rideId)
+          .order("created_at", { ascending: true }),
+        supabase
+          .from("ride_message_reads")
+          .select("message_id, user_id, read_at")
+          .eq("ride_id", rideId),
+      ]);
       if (cancelled) return;
-      if (error) {
+      if (msgErr) {
         toast.error("Could not load messages");
         setMessages([]);
       } else {
-        setMessages((data ?? []) as Message[]);
+        setMessages((msgs ?? []) as Message[]);
       }
+      setReads((rcpts ?? []) as ReadReceipt[]);
       setLoading(false);
     };
     load();
@@ -76,7 +91,7 @@ const RideChat = ({ rideId, driverId, driverName }: Props) => {
     };
   }, [rideId]);
 
-  // Realtime subscription
+  // Realtime subscription — messages + read receipts
   useEffect(() => {
     const channel = supabase
       .channel(`ride_messages:${rideId}`)
@@ -95,11 +110,64 @@ const RideChat = ({ rideId, driverId, driverName }: Props) => {
           );
         },
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "ride_message_reads",
+          filter: `ride_id=eq.${rideId}`,
+        },
+        (payload) => {
+          const r = payload.new as ReadReceipt;
+          setReads((prev) =>
+            prev.some((x) => x.message_id === r.message_id && x.user_id === r.user_id)
+              ? prev
+              : [...prev, r],
+          );
+        },
+      )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
   }, [rideId]);
+
+  // Mark incoming messages as read for the current user
+  useEffect(() => {
+    if (!user) return;
+    const unread = messages.filter(
+      (m) =>
+        !m._pending &&
+        m.sender_id !== user.id &&
+        !reads.some((r) => r.message_id === m.id && r.user_id === user.id),
+    );
+    if (unread.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const rows = unread.map((m) => ({
+        message_id: m.id,
+        user_id: user.id,
+        ride_id: rideId,
+      }));
+      const { error } = await supabase.from("ride_message_reads").insert(rows);
+      if (cancelled || error) return;
+      // Optimistically reflect own reads (realtime will dedupe)
+      setReads((prev) => {
+        const next = [...prev];
+        const now = new Date().toISOString();
+        for (const r of rows) {
+          if (!next.some((x) => x.message_id === r.message_id && x.user_id === r.user_id)) {
+            next.push({ ...r, read_at: now });
+          }
+        }
+        return next;
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [messages, reads, user, rideId]);
 
   // Resolve sender display names
   useEffect(() => {
@@ -153,24 +221,51 @@ const RideChat = ({ rideId, driverId, driverName }: Props) => {
       toast.error("Message is too long");
       return;
     }
-    setSending(true);
-    const { error } = await supabase.from("ride_messages").insert({
+    const tempId = `temp-${crypto.randomUUID()}`;
+    const optimistic: Message = {
+      id: tempId,
       ride_id: rideId,
       sender_id: user.id,
       body,
-    });
+      created_at: new Date().toISOString(),
+      _pending: true,
+    };
+    setMessages((prev) => [...prev, optimistic]);
+    setText("");
+    setSending(true);
+    const { data, error } = await supabase
+      .from("ride_messages")
+      .insert({ ride_id: rideId, sender_id: user.id, body })
+      .select()
+      .single();
     setSending(false);
-    if (error) {
-      toast.error(error.message ?? "Could not send message");
+    if (error || !data) {
+      // Remove optimistic and surface error
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      toast.error(error?.message ?? "Could not send message");
       return;
     }
-    setText("");
+    // Replace optimistic with confirmed row
+    setMessages((prev) => {
+      const withoutTemp = prev.filter((m) => m.id !== tempId);
+      return withoutTemp.some((m) => m.id === data.id)
+        ? withoutTemp
+        : [...withoutTemp, data as Message];
+    });
   };
 
   const nameOf = (senderId: string) => {
     if (senderId === user?.id) return "You";
     if (senderId === driverId) return driverName;
     return names[senderId] ?? "Passenger";
+  };
+
+  const statusFor = (m: Message): "sending" | "sent" | "read" => {
+    if (m._pending) return "sending";
+    const readByOther = reads.some(
+      (r) => r.message_id === m.id && r.user_id !== m.sender_id,
+    );
+    return readByOther ? "read" : "sent";
   };
 
   return (
@@ -208,6 +303,7 @@ const RideChat = ({ rideId, driverId, driverName }: Props) => {
               {g.items.map((m) => {
                 const mine = m.sender_id === user?.id;
                 const senderName = nameOf(m.sender_id);
+                const status = mine ? statusFor(m) : null;
                 return (
                   <div
                     key={m.id}
@@ -232,10 +328,35 @@ const RideChat = ({ rideId, driverId, driverName }: Props) => {
                           mine
                             ? "rounded-br-md bg-primary text-primary-foreground"
                             : "rounded-bl-md bg-muted text-foreground"
-                        }`}
+                        } ${m._pending ? "opacity-70" : ""}`}
                       >
                         {m.body}
                       </div>
+                      {mine && status && (
+                        <div
+                          className="mt-1 flex items-center gap-1 px-1 text-[10px] text-muted-foreground"
+                          aria-label={`Message ${status}`}
+                        >
+                          {status === "sending" && (
+                            <>
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              <span>Sending</span>
+                            </>
+                          )}
+                          {status === "sent" && (
+                            <>
+                              <Check className="h-3 w-3" />
+                              <span>Sent</span>
+                            </>
+                          )}
+                          {status === "read" && (
+                            <>
+                              <CheckCheck className="h-3 w-3 text-primary" />
+                              <span className="text-primary">Read</span>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
