@@ -8,7 +8,7 @@ import {
 import { format } from "date-fns";
 import Header from "@/components/site/Header";
 import Footer from "@/components/site/Footer";
-import { CityDataList } from "@/components/site/SearchBar";
+import { CityDataList, KASHMIR_QUICK_ROUTES } from "@/components/site/SearchBar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
