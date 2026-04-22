@@ -350,25 +350,59 @@ const RideChat = ({ rideId, driverId, driverName }: Props) => {
                       {mine && status && (
                         <div
                           className="mt-1 flex items-center gap-1 px-1 text-[10px] text-muted-foreground"
-                          aria-label={`Message ${status}`}
+                          aria-label={`Message ${status.state}`}
                         >
-                          {status === "sending" && (
+                          {status.state === "sending" && (
                             <>
                               <Loader2 className="h-3 w-3 animate-spin" />
                               <span>Sending</span>
                             </>
                           )}
-                          {status === "sent" && (
-                            <>
-                              <Check className="h-3 w-3" />
-                              <span>Sent</span>
-                            </>
+                          {status.state === "sent" && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="flex items-center gap-1 outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                                >
+                                  <Check className="h-3 w-3" />
+                                  <span>Sent · {formatTime(m.created_at)}</span>
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">
+                                <div className="font-medium">Delivered</div>
+                                <div className="text-muted-foreground">
+                                  Sent {formatFullDateTime(m.created_at)}
+                                </div>
+                                <div className="text-muted-foreground">Not read yet</div>
+                              </TooltipContent>
+                            </Tooltip>
                           )}
-                          {status === "read" && (
-                            <>
-                              <CheckCheck className="h-3 w-3 text-primary" />
-                              <span className="text-primary">Read</span>
-                            </>
+                          {status.state === "read" && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="flex items-center gap-1 outline-none focus-visible:ring-2 focus-visible:ring-ring rounded text-primary"
+                                >
+                                  <CheckCheck className="h-3 w-3" />
+                                  <span>Read · {formatTime(status.readers[status.readers.length - 1].read_at)}</span>
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">
+                                <div className="font-medium">Read receipts</div>
+                                <div className="text-muted-foreground">
+                                  Sent {formatFullDateTime(m.created_at)}
+                                </div>
+                                <div className="mt-1 space-y-0.5">
+                                  {status.readers.map((r) => (
+                                    <div key={r.user_id}>
+                                      {nameOf(r.user_id)} · {formatFullDateTime(r.read_at)}
+                                    </div>
+                                  ))}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
                           )}
                         </div>
                       )}
