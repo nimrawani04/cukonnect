@@ -91,7 +91,7 @@ const RideChat = ({ rideId, driverId, driverName }: Props) => {
     };
   }, [rideId]);
 
-  // Realtime subscription
+  // Realtime subscription — messages + read receipts
   useEffect(() => {
     const channel = supabase
       .channel(`ride_messages:${rideId}`)
@@ -110,11 +110,64 @@ const RideChat = ({ rideId, driverId, driverName }: Props) => {
           );
         },
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "ride_message_reads",
+          filter: `ride_id=eq.${rideId}`,
+        },
+        (payload) => {
+          const r = payload.new as ReadReceipt;
+          setReads((prev) =>
+            prev.some((x) => x.message_id === r.message_id && x.user_id === r.user_id)
+              ? prev
+              : [...prev, r],
+          );
+        },
+      )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
   }, [rideId]);
+
+  // Mark incoming messages as read for the current user
+  useEffect(() => {
+    if (!user) return;
+    const unread = messages.filter(
+      (m) =>
+        !m._pending &&
+        m.sender_id !== user.id &&
+        !reads.some((r) => r.message_id === m.id && r.user_id === user.id),
+    );
+    if (unread.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const rows = unread.map((m) => ({
+        message_id: m.id,
+        user_id: user.id,
+        ride_id: rideId,
+      }));
+      const { error } = await supabase.from("ride_message_reads").insert(rows);
+      if (cancelled || error) return;
+      // Optimistically reflect own reads (realtime will dedupe)
+      setReads((prev) => {
+        const next = [...prev];
+        const now = new Date().toISOString();
+        for (const r of rows) {
+          if (!next.some((x) => x.message_id === r.message_id && x.user_id === r.user_id)) {
+            next.push({ ...r, read_at: now });
+          }
+        }
+        return next;
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [messages, reads, user, rideId]);
 
   // Resolve sender display names
   useEffect(() => {
