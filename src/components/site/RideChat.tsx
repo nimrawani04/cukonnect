@@ -270,12 +270,17 @@ const RideChat = ({ rideId, driverId, driverName }: Props) => {
     return names[senderId] ?? "Passenger";
   };
 
-  const statusFor = (m: Message): "sending" | "sent" | "read" => {
-    if (m._pending) return "sending";
-    const readByOther = reads.some(
-      (r) => r.message_id === m.id && r.user_id !== m.sender_id,
-    );
-    return readByOther ? "read" : "sent";
+  const statusFor = (
+    m: Message,
+  ): {
+    state: "sending" | "sent" | "read";
+    readers: { user_id: string; read_at: string }[];
+  } => {
+    if (m._pending) return { state: "sending", readers: [] };
+    const readers = reads
+      .filter((r) => r.message_id === m.id && r.user_id !== m.sender_id)
+      .sort((a, b) => new Date(a.read_at).getTime() - new Date(b.read_at).getTime());
+    return { state: readers.length > 0 ? "read" : "sent", readers };
   };
 
   return (
