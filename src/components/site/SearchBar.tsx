@@ -140,6 +140,27 @@ const SearchBar = ({ variant = "hero", initial }: Props) => {
           Search
         </Button>
       </div>
+
+      {variant === "hero" && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 px-1 pb-1">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Popular routes
+          </span>
+          {KASHMIR_QUICK_ROUTES.map(({ from: f, to: t }) => (
+            <button
+              key={`${f}-${t}`}
+              type="button"
+              onClick={() => {
+                setFrom(f);
+                setTo(t);
+              }}
+              className="rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+            >
+              {f} → {t}
+            </button>
+          ))}
+        </div>
+      )}
     </form>
   );
 };
