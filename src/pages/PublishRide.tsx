@@ -350,7 +350,36 @@ const StepRoute = ({
     )}
 
     <div className="mt-8">
-      <Label className="mb-3 block">Popular Kashmir routes</Label>
+      <div className="mb-3 flex items-center justify-between">
+        <Label>{favorites.length > 0 ? "Your routes" : "Popular Kashmir routes"}</Label>
+        <button
+          type="button"
+          onClick={() => {
+            if (!data.from.trim() || !data.to.trim() || data.from === data.to) {
+              toast.error("Pick two different cities first");
+              return;
+            }
+            const wasFav = currentIsFav;
+            toggleFavorite({ from: data.from, to: data.to });
+            toast.success(
+              wasFav
+                ? `Removed ${data.from} → ${data.to} from favorites`
+                : `Saved ${data.from} → ${data.to} to favorites`,
+            );
+          }}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-all",
+            currentIsFav
+              ? "border-accent/50 bg-accent/10 text-accent-foreground"
+              : "border-border bg-background text-muted-foreground hover:border-accent/40 hover:bg-accent/5 hover:text-foreground",
+          )}
+          aria-label="Save current route as favorite"
+          aria-pressed={currentIsFav}
+        >
+          <Star className={cn("h-3.5 w-3.5", currentIsFav && "fill-current")} />
+          {currentIsFav ? "Saved" : "Save this route"}
+        </button>
+      </div>
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
@@ -365,31 +394,62 @@ const StepRoute = ({
           <ArrowRightLeft className="h-3.5 w-3.5" />
           Swap
         </button>
-        {KASHMIR_QUICK_ROUTES.map(({ from: f, to: t }) => {
+        {orderedRoutes.map(({ from: f, to: t }) => {
           const active = data.from === f && data.to === t;
+          const fav = isFavorite({ from: f, to: t });
           return (
-            <button
+            <span
               key={`${f}-${t}`}
-              type="button"
-              onClick={() => {
-                update("from", f);
-                update("to", t);
-              }}
               className={cn(
-                "rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
+                "inline-flex items-center overflow-hidden rounded-full border transition-colors",
                 active
-                  ? "border-primary/60 bg-primary/10 text-primary"
-                  : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-foreground",
+                  ? "border-primary/60 bg-primary/10"
+                  : fav
+                    ? "border-accent/50 bg-accent/5"
+                    : "border-border bg-background hover:border-primary/40",
               )}
             >
-              {f} → {t}
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  update("from", f);
+                  update("to", t);
+                }}
+                className={cn(
+                  "px-3.5 py-1.5 text-xs font-medium transition-colors",
+                  active
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {f} → {t}
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleFavorite({ from: f, to: t });
+                  toast.success(fav ? `Removed ${f} → ${t}` : `Saved ${f} → ${t}`);
+                }}
+                className={cn(
+                  "flex items-center border-l px-2 py-1.5 transition-colors",
+                  fav
+                    ? "border-accent/30 text-accent hover:bg-accent/10"
+                    : "border-border text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+                aria-label={fav ? `Unfavorite ${f} to ${t}` : `Favorite ${f} to ${t}`}
+                aria-pressed={fav}
+              >
+                <Star className={cn("h-3.5 w-3.5", fav && "fill-current")} />
+              </button>
+            </span>
           );
         })}
       </div>
     </div>
   </>
-);
+  );
+};
 
 const StepWhen = ({
   data,
