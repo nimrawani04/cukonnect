@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Send, MessageCircle } from "lucide-react";
+import { Loader2, Send, MessageCircle, Check, CheckCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,13 @@ type Message = {
   sender_id: string;
   body: string;
   created_at: string;
+  _pending?: boolean;
+};
+
+type ReadReceipt = {
+  message_id: string;
+  user_id: string;
+  read_at: string;
 };
 
 type Props = {
