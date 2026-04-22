@@ -39,6 +39,15 @@ const initialsFor = (name: string) =>
 const formatTime = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
 
+const formatFullDateTime = (iso: string) =>
+  new Date(iso).toLocaleString("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
 const formatDay = (iso: string) => {
   const d = new Date(iso);
   const today = new Date();
