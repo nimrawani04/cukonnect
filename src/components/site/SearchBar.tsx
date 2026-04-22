@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRightLeft, Calendar as CalendarIcon, MapPin, Users, Search } from "lucide-react";
+import { ArrowRightLeft, Calendar as CalendarIcon, MapPin, Users, Search, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,6 +11,8 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { mergeFavoritesFirst, useFavoriteRoutes } from "@/hooks/useFavoriteRoutes";
+import { toast } from "sonner";
 
 const KASHMIR_CITIES = [
   "Srinagar", "Jammu", "Baramulla", "Sopore", "Anantnag",
