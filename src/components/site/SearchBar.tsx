@@ -44,6 +44,8 @@ const SearchBar = ({ variant = "hero", initial }: Props) => {
   const [to, setTo] = useState(initial?.to ?? "Jammu");
   const [date, setDate] = useState<Date | undefined>(initial?.date ?? new Date());
   const [seats, setSeats] = useState(initial?.seats ?? 1);
+  const { favorites, isFavorite, toggleFavorite } = useFavoriteRoutes();
+  const orderedRoutes = mergeFavoritesFirst(favorites, KASHMIR_QUICK_ROUTES);
 
   const swap = () => {
     setFrom(to);
