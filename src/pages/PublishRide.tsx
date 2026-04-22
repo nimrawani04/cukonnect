@@ -345,27 +345,29 @@ const StepRoute = ({
     )}
 
     <div className="mt-8">
-      <Label className="mb-3 block">Quick picks</Label>
+      <Label className="mb-3 block">Popular Kashmir routes</Label>
       <div className="flex flex-wrap gap-2">
-        {[
-          ["Srinagar", "Jammu"],
-          ["Srinagar", "Baramulla"],
-          ["Srinagar", "Anantnag"],
-          ["Srinagar", "Airport (SXR)"],
-          ["Ganderbal", "Srinagar"],
-        ].map(([f, t]) => (
-          <button
-            key={`${f}-${t}`}
-            type="button"
-            onClick={() => {
-              update("from", f);
-              update("to", t);
-            }}
-            className="rounded-full border border-border bg-background px-3.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
-          >
-            {f} → {t}
-          </button>
-        ))}
+        {KASHMIR_QUICK_ROUTES.map(({ from: f, to: t }) => {
+          const active = data.from === f && data.to === t;
+          return (
+            <button
+              key={`${f}-${t}`}
+              type="button"
+              onClick={() => {
+                update("from", f);
+                update("to", t);
+              }}
+              className={cn(
+                "rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
+                active
+                  ? "border-primary/60 bg-primary/10 text-primary"
+                  : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-foreground",
+              )}
+            >
+              {f} → {t}
+            </button>
+          );
+        })}
       </div>
     </div>
   </>
