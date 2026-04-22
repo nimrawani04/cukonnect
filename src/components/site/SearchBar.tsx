@@ -15,7 +15,20 @@ import { cn } from "@/lib/utils";
 const KASHMIR_CITIES = [
   "Srinagar", "Jammu", "Baramulla", "Sopore", "Anantnag",
   "Kupwara", "Ganderbal", "Pulwama", "Kulgam", "Budgam",
-  "Pahalgam", "Gulmarg", "Sonamarg", "Airport (SXR)",
+  "Pahalgam", "Gulmarg", "Sonamarg", "Tulmulla", "TRC", "Airport (SXR)",
+];
+
+// Common Kashmir carpooling corridors used as quick-pick chips
+// across the Search bar and the Publish Ride form.
+export const KASHMIR_QUICK_ROUTES: { from: string; to: string }[] = [
+  { from: "Srinagar", to: "Jammu" },
+  { from: "Srinagar", to: "Baramulla" },
+  { from: "Srinagar", to: "Sopore" },
+  { from: "Srinagar", to: "Kupwara" },
+  { from: "Srinagar", to: "Anantnag" },
+  { from: "Srinagar", to: "Ganderbal" },
+  { from: "Tulmulla", to: "TRC" },
+  { from: "TRC", to: "Tulmulla" },
 ];
 
 type Props = {
