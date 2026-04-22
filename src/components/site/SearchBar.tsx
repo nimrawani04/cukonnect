@@ -148,7 +148,7 @@ const SearchBar = ({ variant = "hero", initial }: Props) => {
       {variant === "hero" && (
         <div className="mt-3 flex flex-wrap items-center gap-2 px-1 pb-1">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Popular routes
+            {favorites.length > 0 ? "Your routes" : "Popular routes"}
           </span>
           <button
             type="button"
@@ -159,19 +159,76 @@ const SearchBar = ({ variant = "hero", initial }: Props) => {
             <ArrowRightLeft className="h-3.5 w-3.5" />
             Swap
           </button>
-          {KASHMIR_QUICK_ROUTES.map(({ from: f, to: t }) => (
-            <button
-              key={`${f}-${t}`}
-              type="button"
-              onClick={() => {
-                setFrom(f);
-                setTo(t);
-              }}
-              className="rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
-            >
-              {f} → {t}
-            </button>
-          ))}
+          <button
+            type="button"
+            onClick={() => {
+              if (!from.trim() || !to.trim() || from === to) {
+                toast.error("Pick two different cities first");
+                return;
+              }
+              const wasFav = isFavorite({ from, to });
+              toggleFavorite({ from, to });
+              toast.success(
+                wasFav ? `Removed ${from} → ${to} from favorites` : `Saved ${from} → ${to} to favorites`,
+              );
+            }}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold transition-all",
+              isFavorite({ from, to })
+                ? "border-accent/50 bg-accent/10 text-accent-foreground"
+                : "border-border bg-background text-muted-foreground hover:border-accent/40 hover:bg-accent/5 hover:text-foreground",
+            )}
+            aria-label="Save current route as favorite"
+          >
+            <Star className={cn("h-3.5 w-3.5", isFavorite({ from, to }) && "fill-current")} />
+            {isFavorite({ from, to }) ? "Saved" : "Save"}
+          </button>
+          {orderedRoutes.map(({ from: f, to: t }) => {
+            const fav = isFavorite({ from: f, to: t });
+            return (
+              <span
+                key={`${f}-${t}`}
+                className={cn(
+                  "inline-flex items-center overflow-hidden rounded-full border transition-colors",
+                  fav
+                    ? "border-accent/50 bg-accent/5"
+                    : "border-border bg-background hover:border-primary/40",
+                )}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFrom(f);
+                    setTo(t);
+                  }}
+                  className={cn(
+                    "px-3 py-1 text-xs font-medium transition-colors",
+                    fav ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {f} → {t}
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleFavorite({ from: f, to: t });
+                    toast.success(fav ? `Removed ${f} → ${t}` : `Saved ${f} → ${t}`);
+                  }}
+                  className={cn(
+                    "flex items-center border-l px-2 py-1 transition-colors",
+                    fav
+                      ? "border-accent/30 text-accent hover:bg-accent/10"
+                      : "border-border text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                  aria-label={fav ? `Unfavorite ${f} to ${t}` : `Favorite ${f} to ${t}`}
+                  aria-pressed={fav}
+                >
+                  <Star className={cn("h-3.5 w-3.5", fav && "fill-current")} />
+                </button>
+              </span>
+            );
+          })}
         </div>
       )}
     </form>
