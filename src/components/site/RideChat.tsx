@@ -221,24 +221,51 @@ const RideChat = ({ rideId, driverId, driverName }: Props) => {
       toast.error("Message is too long");
       return;
     }
-    setSending(true);
-    const { error } = await supabase.from("ride_messages").insert({
+    const tempId = `temp-${crypto.randomUUID()}`;
+    const optimistic: Message = {
+      id: tempId,
       ride_id: rideId,
       sender_id: user.id,
       body,
-    });
+      created_at: new Date().toISOString(),
+      _pending: true,
+    };
+    setMessages((prev) => [...prev, optimistic]);
+    setText("");
+    setSending(true);
+    const { data, error } = await supabase
+      .from("ride_messages")
+      .insert({ ride_id: rideId, sender_id: user.id, body })
+      .select()
+      .single();
     setSending(false);
-    if (error) {
-      toast.error(error.message ?? "Could not send message");
+    if (error || !data) {
+      // Remove optimistic and surface error
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      toast.error(error?.message ?? "Could not send message");
       return;
     }
-    setText("");
+    // Replace optimistic with confirmed row
+    setMessages((prev) => {
+      const withoutTemp = prev.filter((m) => m.id !== tempId);
+      return withoutTemp.some((m) => m.id === data.id)
+        ? withoutTemp
+        : [...withoutTemp, data as Message];
+    });
   };
 
   const nameOf = (senderId: string) => {
     if (senderId === user?.id) return "You";
     if (senderId === driverId) return driverName;
     return names[senderId] ?? "Passenger";
+  };
+
+  const statusFor = (m: Message): "sending" | "sent" | "read" => {
+    if (m._pending) return "sending";
+    const readByOther = reads.some(
+      (r) => r.message_id === m.id && r.user_id !== m.sender_id,
+    );
+    return readByOther ? "read" : "sent";
   };
 
   return (
