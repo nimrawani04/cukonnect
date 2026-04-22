@@ -347,6 +347,19 @@ const StepRoute = ({
     <div className="mt-8">
       <Label className="mb-3 block">Popular Kashmir routes</Label>
       <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            const f = data.from;
+            update("from", data.to);
+            update("to", f);
+          }}
+          className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-3.5 py-1.5 text-xs font-semibold text-primary transition-all hover:bg-primary/10"
+          aria-label="Swap From and To"
+        >
+          <ArrowRightLeft className="h-3.5 w-3.5" />
+          Swap
+        </button>
         {KASHMIR_QUICK_ROUTES.map(({ from: f, to: t }) => {
           const active = data.from === f && data.to === t;
           return (
