@@ -294,7 +294,11 @@ const StepRoute = ({
 }: {
   data: FormState;
   update: <K extends keyof FormState>(k: K, v: FormState[K]) => void;
-}) => (
+}) => {
+  const { favorites, isFavorite, toggleFavorite } = useFavoriteRoutes();
+  const orderedRoutes = mergeFavoritesFirst(favorites, KASHMIR_QUICK_ROUTES);
+  const currentIsFav = isFavorite({ from: data.from, to: data.to });
+  return (
   <>
     <StepHeader
       icon={<MapPin className="h-5 w-5" />}
