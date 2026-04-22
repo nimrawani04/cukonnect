@@ -303,6 +303,7 @@ const RideChat = ({ rideId, driverId, driverName }: Props) => {
               {g.items.map((m) => {
                 const mine = m.sender_id === user?.id;
                 const senderName = nameOf(m.sender_id);
+                const status = mine ? statusFor(m) : null;
                 return (
                   <div
                     key={m.id}
@@ -327,10 +328,35 @@ const RideChat = ({ rideId, driverId, driverName }: Props) => {
                           mine
                             ? "rounded-br-md bg-primary text-primary-foreground"
                             : "rounded-bl-md bg-muted text-foreground"
-                        }`}
+                        } ${m._pending ? "opacity-70" : ""}`}
                       >
                         {m.body}
                       </div>
+                      {mine && status && (
+                        <div
+                          className="mt-1 flex items-center gap-1 px-1 text-[10px] text-muted-foreground"
+                          aria-label={`Message ${status}`}
+                        >
+                          {status === "sending" && (
+                            <>
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              <span>Sending</span>
+                            </>
+                          )}
+                          {status === "sent" && (
+                            <>
+                              <Check className="h-3 w-3" />
+                              <span>Sent</span>
+                            </>
+                          )}
+                          {status === "read" && (
+                            <>
+                              <CheckCheck className="h-3 w-3 text-primary" />
+                              <span className="text-primary">Read</span>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
