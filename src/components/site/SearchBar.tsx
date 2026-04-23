@@ -233,8 +233,12 @@ const SearchBar = ({ variant = "hero", initial }: Props) => {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (fav) {
+                      setPendingRemoval({ from: f, to: t });
+                      return;
+                    }
                     toggleFavorite({ from: f, to: t });
-                    toast.success(fav ? `Removed ${f} → ${t}` : `Saved ${f} → ${t}`);
+                    toast.success(`Saved ${f} → ${t}`);
                   }}
                   className={cn(
                     "flex items-center border-l px-2 py-1 transition-colors",
