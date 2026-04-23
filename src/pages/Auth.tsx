@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Mountain, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +46,21 @@ const Auth = () => {
     } catch (err: any) {
       toast.error(err?.message ?? "Something went wrong");
     } finally {
+      setBusy(false);
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    setBusy(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: `${window.location.origin}/trips`,
+      });
+      if (result.error) throw result.error;
+      if (result.redirected) return;
+      navigate("/trips", { replace: true });
+    } catch (err: any) {
+      toast.error(err?.message ?? "Google sign-in failed");
       setBusy(false);
     }
   };
