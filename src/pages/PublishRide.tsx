@@ -487,8 +487,6 @@ const StepRoute = ({
   </>
   );
 };
-  );
-};
 
 const StepWhen = ({
   data,
