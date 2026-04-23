@@ -11,6 +11,7 @@ import Publish from "./pages/Publish.tsx";
 import PublishRide from "./pages/PublishRide.tsx";
 import Trips from "./pages/Trips.tsx";
 import Auth from "./pages/Auth.tsx";
+import Onboarding from "./pages/Onboarding.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/search" element={<Search />} />
             <Route path="/ride/:id" element={<RideDetail />} />
             <Route path="/publish" element={<Publish />} />

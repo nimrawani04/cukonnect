@@ -19,7 +19,7 @@ const Auth = () => {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) navigate("/trips", { replace: true });
+    if (!loading && user) navigate("/onboarding", { replace: true });
   }, [user, loading, navigate]);
 
   const submit = async (e: React.FormEvent) => {
@@ -27,7 +27,7 @@ const Auth = () => {
     setBusy(true);
     try {
       if (mode === "signup") {
-        const redirectUrl = `${window.location.origin}/trips`;
+        const redirectUrl = `${window.location.origin}/onboarding`;
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -54,11 +54,11 @@ const Auth = () => {
     setBusy(true);
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: `${window.location.origin}/trips`,
+        redirect_uri: `${window.location.origin}/onboarding`,
       });
       if (result.error) throw result.error;
       if (result.redirected) return;
-      navigate("/trips", { replace: true });
+      navigate("/onboarding", { replace: true });
     } catch (err: any) {
       toast.error(err?.message ?? "Google sign-in failed");
       setBusy(false);
