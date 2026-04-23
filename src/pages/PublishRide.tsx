@@ -9,7 +9,17 @@ import { format } from "date-fns";
 import Header from "@/components/site/Header";
 import Footer from "@/components/site/Footer";
 import { CityDataList, KASHMIR_QUICK_ROUTES } from "@/components/site/SearchBar";
-import { mergeFavoritesFirst, useFavoriteRoutes } from "@/hooks/useFavoriteRoutes";
+import { mergeFavoritesFirst, useFavoriteRoutes, type Route } from "@/hooks/useFavoriteRoutes";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -298,6 +308,14 @@ const StepRoute = ({
   const { favorites, isFavorite, toggleFavorite } = useFavoriteRoutes();
   const orderedRoutes = mergeFavoritesFirst(favorites, KASHMIR_QUICK_ROUTES);
   const currentIsFav = isFavorite({ from: data.from, to: data.to });
+  const [pendingRemoval, setPendingRemoval] = useState<Route | null>(null);
+  const confirmRemove = () => {
+    if (!pendingRemoval) return;
+    const { from: f, to: t } = pendingRemoval;
+    toggleFavorite(pendingRemoval);
+    toast.success(`Removed ${f} → ${t} from favorites`);
+    setPendingRemoval(null);
+  };
   return (
   <>
     <StepHeader
@@ -359,13 +377,12 @@ const StepRoute = ({
               toast.error("Pick two different cities first");
               return;
             }
-            const wasFav = currentIsFav;
+            if (currentIsFav) {
+              setPendingRemoval({ from: data.from, to: data.to });
+              return;
+            }
             toggleFavorite({ from: data.from, to: data.to });
-            toast.success(
-              wasFav
-                ? `Removed ${data.from} → ${data.to} from favorites`
-                : `Saved ${data.from} → ${data.to} to favorites`,
-            );
+            toast.success(`Saved ${data.from} → ${data.to} to favorites`);
           }}
           className={cn(
             "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-all",
@@ -428,8 +445,12 @@ const StepRoute = ({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (fav) {
+                    setPendingRemoval({ from: f, to: t });
+                    return;
+                  }
                   toggleFavorite({ from: f, to: t });
-                  toast.success(fav ? `Removed ${f} → ${t}` : `Saved ${f} → ${t}`);
+                  toast.success(`Saved ${f} → ${t}`);
                 }}
                 className={cn(
                   "flex items-center border-l px-2 py-1.5 transition-colors",
@@ -447,6 +468,22 @@ const StepRoute = ({
         })}
       </div>
     </div>
+    <AlertDialog open={!!pendingRemoval} onOpenChange={(open) => !open && setPendingRemoval(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remove favorite route?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {pendingRemoval
+              ? `${pendingRemoval.from} → ${pendingRemoval.to} will be removed from your favorites. You can save it again anytime.`
+              : ""}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmRemove}>Remove</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </>
   );
 };

@@ -8,10 +8,20 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { mergeFavoritesFirst, useFavoriteRoutes } from "@/hooks/useFavoriteRoutes";
+import { mergeFavoritesFirst, useFavoriteRoutes, type Route } from "@/hooks/useFavoriteRoutes";
 import { toast } from "sonner";
 
 const KASHMIR_CITIES = [
@@ -46,6 +56,15 @@ const SearchBar = ({ variant = "hero", initial }: Props) => {
   const [seats, setSeats] = useState(initial?.seats ?? 1);
   const { favorites, isFavorite, toggleFavorite } = useFavoriteRoutes();
   const orderedRoutes = mergeFavoritesFirst(favorites, KASHMIR_QUICK_ROUTES);
+  const [pendingRemoval, setPendingRemoval] = useState<Route | null>(null);
+
+  const confirmRemove = () => {
+    if (!pendingRemoval) return;
+    const { from: f, to: t } = pendingRemoval;
+    toggleFavorite(pendingRemoval);
+    toast.success(`Removed ${f} → ${t} from favorites`);
+    setPendingRemoval(null);
+  };
 
   const swap = () => {
     setFrom(to);
@@ -62,6 +81,7 @@ const SearchBar = ({ variant = "hero", initial }: Props) => {
   };
 
   return (
+    <>
     <form
       onSubmit={onSubmit}
       className={cn(
@@ -167,10 +187,12 @@ const SearchBar = ({ variant = "hero", initial }: Props) => {
                 return;
               }
               const wasFav = isFavorite({ from, to });
+              if (wasFav) {
+                setPendingRemoval({ from, to });
+                return;
+              }
               toggleFavorite({ from, to });
-              toast.success(
-                wasFav ? `Removed ${from} → ${to} from favorites` : `Saved ${from} → ${to} to favorites`,
-              );
+              toast.success(`Saved ${from} → ${to} to favorites`);
             }}
             className={cn(
               "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold transition-all",
@@ -212,8 +234,12 @@ const SearchBar = ({ variant = "hero", initial }: Props) => {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (fav) {
+                      setPendingRemoval({ from: f, to: t });
+                      return;
+                    }
                     toggleFavorite({ from: f, to: t });
-                    toast.success(fav ? `Removed ${f} → ${t}` : `Saved ${f} → ${t}`);
+                    toast.success(`Saved ${f} → ${t}`);
                   }}
                   className={cn(
                     "flex items-center border-l px-2 py-1 transition-colors",
@@ -232,6 +258,23 @@ const SearchBar = ({ variant = "hero", initial }: Props) => {
         </div>
       )}
     </form>
+    <AlertDialog open={!!pendingRemoval} onOpenChange={(open) => !open && setPendingRemoval(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remove favorite route?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {pendingRemoval
+              ? `${pendingRemoval.from} → ${pendingRemoval.to} will be removed from your favorites. You can save it again anytime.`
+              : ""}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmRemove}>Remove</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 };
 
