@@ -8,10 +8,20 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { mergeFavoritesFirst, useFavoriteRoutes } from "@/hooks/useFavoriteRoutes";
+import { mergeFavoritesFirst, useFavoriteRoutes, type Route } from "@/hooks/useFavoriteRoutes";
 import { toast } from "sonner";
 
 const KASHMIR_CITIES = [
