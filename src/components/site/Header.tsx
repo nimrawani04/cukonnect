@@ -7,6 +7,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useAuth } from "@/contexts/AuthContext";
+import RoleSwitcher from "@/components/site/RoleSwitcher";
 
 const navLinks = [
   { to: "/", label: "Find a ride" },
@@ -50,6 +51,7 @@ const Header = () => {
         <div className="hidden items-center gap-2 md:flex">
           {user ? (
             <>
+              <RoleSwitcher />
               <span className="text-sm text-muted-foreground">
                 {user.email}
               </span>
@@ -89,10 +91,13 @@ const Header = () => {
               ))}
               <div className="mt-4 flex flex-col gap-2 border-t pt-4">
                 {user ? (
-                  <Button variant="outline" onClick={() => signOut()}>
-                    <LogOut className="mr-1 h-4 w-4" />
-                    Sign out
-                  </Button>
+                  <>
+                    <RoleSwitcher className="w-full justify-between" />
+                    <Button variant="outline" onClick={() => signOut()}>
+                      <LogOut className="mr-1 h-4 w-4" />
+                      Sign out
+                    </Button>
+                  </>
                 ) : (
                   <>
                     <Button variant="outline" onClick={() => navigate("/auth")}>Sign in</Button>
