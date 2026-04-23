@@ -377,13 +377,12 @@ const StepRoute = ({
               toast.error("Pick two different cities first");
               return;
             }
-            const wasFav = currentIsFav;
+            if (currentIsFav) {
+              setPendingRemoval({ from: data.from, to: data.to });
+              return;
+            }
             toggleFavorite({ from: data.from, to: data.to });
-            toast.success(
-              wasFav
-                ? `Removed ${data.from} → ${data.to} from favorites`
-                : `Saved ${data.from} → ${data.to} to favorites`,
-            );
+            toast.success(`Saved ${data.from} → ${data.to} to favorites`);
           }}
           className={cn(
             "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-all",
