@@ -186,10 +186,12 @@ const SearchBar = ({ variant = "hero", initial }: Props) => {
                 return;
               }
               const wasFav = isFavorite({ from, to });
+              if (wasFav) {
+                setPendingRemoval({ from, to });
+                return;
+              }
               toggleFavorite({ from, to });
-              toast.success(
-                wasFav ? `Removed ${from} → ${to} from favorites` : `Saved ${from} → ${to} to favorites`,
-              );
+              toast.success(`Saved ${from} → ${to} to favorites`);
             }}
             className={cn(
               "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold transition-all",
