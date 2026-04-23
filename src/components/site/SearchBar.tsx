@@ -258,6 +258,23 @@ const SearchBar = ({ variant = "hero", initial }: Props) => {
         </div>
       )}
     </form>
+    <AlertDialog open={!!pendingRemoval} onOpenChange={(open) => !open && setPendingRemoval(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remove favorite route?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {pendingRemoval
+              ? `${pendingRemoval.from} → ${pendingRemoval.to} will be removed from your favorites. You can save it again anytime.`
+              : ""}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmRemove}>Remove</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 };
 
