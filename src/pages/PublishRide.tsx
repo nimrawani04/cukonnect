@@ -445,8 +445,12 @@ const StepRoute = ({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (fav) {
+                    setPendingRemoval({ from: f, to: t });
+                    return;
+                  }
                   toggleFavorite({ from: f, to: t });
-                  toast.success(fav ? `Removed ${f} → ${t}` : `Saved ${f} → ${t}`);
+                  toast.success(`Saved ${f} → ${t}`);
                 }}
                 className={cn(
                   "flex items-center border-l px-2 py-1.5 transition-colors",
@@ -464,7 +468,25 @@ const StepRoute = ({
         })}
       </div>
     </div>
+    <AlertDialog open={!!pendingRemoval} onOpenChange={(open) => !open && setPendingRemoval(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remove favorite route?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {pendingRemoval
+              ? `${pendingRemoval.from} → ${pendingRemoval.to} will be removed from your favorites. You can save it again anytime.`
+              : ""}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmRemove}>Remove</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </>
+  );
+};
   );
 };
 
