@@ -308,6 +308,14 @@ const StepRoute = ({
   const { favorites, isFavorite, toggleFavorite } = useFavoriteRoutes();
   const orderedRoutes = mergeFavoritesFirst(favorites, KASHMIR_QUICK_ROUTES);
   const currentIsFav = isFavorite({ from: data.from, to: data.to });
+  const [pendingRemoval, setPendingRemoval] = useState<Route | null>(null);
+  const confirmRemove = () => {
+    if (!pendingRemoval) return;
+    const { from: f, to: t } = pendingRemoval;
+    toggleFavorite(pendingRemoval);
+    toast.success(`Removed ${f} → ${t} from favorites`);
+    setPendingRemoval(null);
+  };
   return (
   <>
     <StepHeader
