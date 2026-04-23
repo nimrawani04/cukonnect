@@ -56,6 +56,15 @@ const SearchBar = ({ variant = "hero", initial }: Props) => {
   const [seats, setSeats] = useState(initial?.seats ?? 1);
   const { favorites, isFavorite, toggleFavorite } = useFavoriteRoutes();
   const orderedRoutes = mergeFavoritesFirst(favorites, KASHMIR_QUICK_ROUTES);
+  const [pendingRemoval, setPendingRemoval] = useState<Route | null>(null);
+
+  const confirmRemove = () => {
+    if (!pendingRemoval) return;
+    const { from: f, to: t } = pendingRemoval;
+    toggleFavorite(pendingRemoval);
+    toast.success(`Removed ${f} → ${t} from favorites`);
+    setPendingRemoval(null);
+  };
 
   const swap = () => {
     setFrom(to);
