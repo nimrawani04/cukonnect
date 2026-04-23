@@ -81,6 +81,7 @@ const SearchBar = ({ variant = "hero", initial }: Props) => {
   };
 
   return (
+    <>
     <form
       onSubmit={onSubmit}
       className={cn(
