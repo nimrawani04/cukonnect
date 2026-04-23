@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Mountain, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +46,21 @@ const Auth = () => {
     } catch (err: any) {
       toast.error(err?.message ?? "Something went wrong");
     } finally {
+      setBusy(false);
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    setBusy(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: `${window.location.origin}/trips`,
+      });
+      if (result.error) throw result.error;
+      if (result.redirected) return;
+      navigate("/trips", { replace: true });
+    } catch (err: any) {
+      toast.error(err?.message ?? "Google sign-in failed");
       setBusy(false);
     }
   };
@@ -115,6 +131,25 @@ const Auth = () => {
               {busy ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}
             </Button>
           </form>
+
+          <div className="my-6 flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-xs uppercase tracking-wider text-muted-foreground">or</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy}
+            onClick={signInWithGoogle}
+            className="h-12 w-full rounded-full text-base"
+          >
+            <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24" aria-hidden>
+              <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.4-1.66 4.1-5.5 4.1-3.31 0-6.01-2.74-6.01-6.1S8.69 5.9 12 5.9c1.88 0 3.14.8 3.86 1.49l2.64-2.55C16.86 3.27 14.65 2.4 12 2.4 6.86 2.4 2.7 6.55 2.7 11.7s4.16 9.3 9.3 9.3c5.37 0 8.92-3.77 8.92-9.08 0-.61-.07-1.08-.16-1.55H12z"/>
+            </svg>
+            Continue with Google
+          </Button>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             {mode === "signup" ? "Already have an account?" : "New to CuKashmir?"}{" "}
