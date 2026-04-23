@@ -69,6 +69,7 @@ export type Database = {
           trips_count: number
           updated_at: string
           user_id: string
+          user_type: Database["public"]["Enums"]["user_type"] | null
           verified: boolean
         }
         Insert: {
@@ -81,6 +82,7 @@ export type Database = {
           trips_count?: number
           updated_at?: string
           user_id: string
+          user_type?: Database["public"]["Enums"]["user_type"] | null
           verified?: boolean
         }
         Update: {
@@ -93,6 +95,7 @@ export type Database = {
           trips_count?: number
           updated_at?: string
           user_id?: string
+          user_type?: Database["public"]["Enums"]["user_type"] | null
           verified?: boolean
         }
         Relationships: []
@@ -233,6 +236,7 @@ export type Database = {
       booking_status: "pending" | "confirmed" | "cancelled" | "completed"
       payment_status: "paid" | "cash" | "refunded"
       ride_status: "active" | "completed" | "cancelled"
+      user_type: "passenger" | "driver"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -363,6 +367,7 @@ export const Constants = {
       booking_status: ["pending", "confirmed", "cancelled", "completed"],
       payment_status: ["paid", "cash", "refunded"],
       ride_status: ["active", "completed", "cancelled"],
+      user_type: ["passenger", "driver"],
     },
   },
 } as const
