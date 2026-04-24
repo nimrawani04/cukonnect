@@ -8,11 +8,13 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 type Choice = "passenger" | "driver";
+type Gender = "male" | "female" | "other" | "prefer_not_to_say";
 
 const Onboarding = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const [choice, setChoice] = useState<Choice | null>(null);
+  const [gender, setGender] = useState<Gender | null>(null);
   const [checking, setChecking] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -27,16 +29,19 @@ const Onboarding = () => {
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("user_type")
+        .select("user_type, gender")
         .eq("user_id", user.id)
         .maybeSingle();
       if (cancelled) return;
-      if (data?.user_type) {
+      if (data?.user_type && data?.gender) {
         navigate(data.user_type === "driver" ? "/publish/new" : "/search", {
           replace: true,
         });
         return;
       }
+      // Pre-fill any partial choices so the user only fills what's missing
+      if (data?.user_type) setChoice(data.user_type as Choice);
+      if (data?.gender) setGender(data.gender as Gender);
       setChecking(false);
     })();
     return () => {
@@ -45,11 +50,11 @@ const Onboarding = () => {
   }, [user, loading, navigate]);
 
   const submit = async () => {
-    if (!user || !choice) return;
+    if (!user || !choice || !gender) return;
     setSaving(true);
     const { error } = await supabase
       .from("profiles")
-      .update({ user_type: choice })
+      .update({ user_type: choice, gender })
       .eq("user_id", user.id);
     setSaving(false);
     if (error) {
@@ -108,9 +113,42 @@ const Onboarding = () => {
             />
           </div>
 
+          <div className="mt-8">
+            <div className="text-sm font-semibold">Your gender</div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Helps fellow travellers feel safer and informed. Shown on your bookings.
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {([
+                { id: "female", label: "Female" },
+                { id: "male", label: "Male" },
+                { id: "other", label: "Other" },
+                { id: "prefer_not_to_say", label: "Prefer not to say" },
+              ] as { id: Gender; label: string }[]).map((g) => {
+                const active = gender === g.id;
+                return (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => setGender(g.id)}
+                    aria-pressed={active}
+                    className={cn(
+                      "rounded-xl border px-3 py-2.5 text-sm font-medium transition-all",
+                      active
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                    )}
+                  >
+                    {g.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <Button
             onClick={submit}
-            disabled={!choice || saving}
+            disabled={!choice || !gender || saving}
             className="mt-8 h-12 w-full rounded-full text-base"
           >
             {saving ? (

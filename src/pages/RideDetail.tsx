@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   Star, ShieldCheck, Zap, MapPin, Clock, Car, Music2, Wifi, Snowflake,
   MessageCircle, ChevronLeft, Loader2, CheckCircle2, XCircle, AlertCircle,
+  Navigation, Power, Users,
 } from "lucide-react";
 import Header from "@/components/site/Header";
 import Footer from "@/components/site/Footer";
@@ -12,6 +13,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import RideChat from "@/components/site/RideChat";
+import LiveMap from "@/components/site/LiveMap";
+import {
+  useShareDriverLocation,
+  useLiveDriverLocation,
+} from "@/hooks/useDriverLocation";
 
 type RideRow = {
   id: string;
@@ -48,6 +54,21 @@ type BookingRow = {
   payment_status: "paid" | "cash" | "refunded";
 };
 
+type RideStop = {
+  id: string;
+  name: string;
+  stop_order: number;
+  price_from_origin: number;
+};
+
+type Passenger = {
+  passenger_id: string;
+  status: BookingRow["status"];
+  seats_booked: number;
+  display_name: string | null;
+  gender: "male" | "female" | "other" | "prefer_not_to_say" | null;
+};
+
 const initialsFor = (name: string | null | undefined) => {
   if (!name) return "U";
   return name
@@ -57,6 +78,16 @@ const initialsFor = (name: string | null | undefined) => {
     .slice(0, 2)
     .join("")
     .toUpperCase();
+};
+
+const genderLabel = (g: Passenger["gender"]) => {
+  switch (g) {
+    case "female": return "Female";
+    case "male": return "Male";
+    case "other": return "Other";
+    case "prefer_not_to_say": return "Prefers not to say";
+    default: return "Not set";
+  }
 };
 
 const formatRules = (rules: Record<string, unknown> | null): string[] => {
@@ -82,6 +113,17 @@ const RideDetail = () => {
   const [driver, setDriver] = useState<DriverProfile | null>(null);
   const [myBooking, setMyBooking] = useState<BookingRow | null>(null);
   const [booking, setBooking] = useState(false);
+  const [stops, setStops] = useState<RideStop[]>([]);
+  const [passengers, setPassengers] = useState<Passenger[]>([]);
+
+  const isOwnRide = !!user && !!ride && user.id === ride.driver_id;
+
+  // Live location: driver shares, everyone with access reads
+  const liveLocation = useLiveDriverLocation(ride?.id ?? null);
+  const { sharing, start: startSharing, stop: stopSharing } = useShareDriverLocation(
+    ride?.id ?? null,
+    user?.id ?? null,
+  );
 
   const load = async () => {
     if (!id) return;
@@ -100,12 +142,20 @@ const RideDetail = () => {
     }
     setRide(rideData as RideRow);
 
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("user_id, display_name, rating, trips_count, verified")
-      .eq("user_id", rideData.driver_id)
-      .maybeSingle();
+    const [{ data: profileData }, { data: stopsData }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("user_id, display_name, rating, trips_count, verified")
+        .eq("user_id", rideData.driver_id)
+        .maybeSingle(),
+      supabase
+        .from("ride_stops")
+        .select("id, name, stop_order, price_from_origin")
+        .eq("ride_id", id)
+        .order("stop_order", { ascending: true }),
+    ]);
     setDriver(profileData as DriverProfile | null);
+    setStops((stopsData ?? []) as RideStop[]);
 
     if (user) {
       const { data: bookingData } = await supabase
@@ -122,12 +172,82 @@ const RideDetail = () => {
     setLoading(false);
   };
 
+  // Load passengers (with gender). Visible to driver always; passengers see fellow riders.
+  const loadPassengers = async (rideId: string) => {
+    const { data: bookings } = await supabase
+      .from("bookings")
+      .select("passenger_id, status, seats_booked")
+      .eq("ride_id", rideId)
+      .neq("status", "cancelled");
+    if (!bookings || bookings.length === 0) {
+      setPassengers([]);
+      return;
+    }
+    const ids = Array.from(new Set(bookings.map((b) => b.passenger_id)));
+    const { data: profs } = await supabase
+      .from("profiles")
+      .select("user_id, display_name, gender")
+      .in("user_id", ids);
+    const profMap = new Map((profs ?? []).map((p: any) => [p.user_id, p]));
+    setPassengers(
+      bookings.map((b: any) => {
+        const p = profMap.get(b.passenger_id) as any;
+        return {
+          passenger_id: b.passenger_id,
+          status: b.status,
+          seats_booked: b.seats_booked,
+          display_name: p?.display_name ?? null,
+          gender: p?.gender ?? null,
+        };
+      }),
+    );
+  };
+
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, user?.id]);
 
-  const isOwnRide = user && ride && user.id === ride.driver_id;
+  useEffect(() => {
+    if (ride?.id) loadPassengers(ride.id);
+  }, [ride?.id]);
+
+  // Realtime: subscribe to ride changes (seats_left, status) and bookings on this ride
+  useEffect(() => {
+    if (!ride?.id) return;
+    const channel = supabase
+      .channel(`ride-${ride.id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "rides", filter: `id=eq.${ride.id}` },
+        (payload) => {
+          setRide((prev) => (prev ? { ...prev, ...(payload.new as RideRow) } : prev));
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "bookings", filter: `ride_id=eq.${ride.id}` },
+        () => loadPassengers(ride.id),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "ride_stops", filter: `ride_id=eq.${ride.id}` },
+        async () => {
+          const { data } = await supabase
+            .from("ride_stops")
+            .select("id, name, stop_order, price_from_origin")
+            .eq("ride_id", ride.id)
+            .order("stop_order", { ascending: true });
+          setStops((data ?? []) as RideStop[]);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [ride?.id]);
+
   const ruleList = useMemo(() => formatRules(ride?.rules ?? null), [ride?.rules]);
 
   const handleBook = async () => {
@@ -194,8 +314,8 @@ const RideDetail = () => {
   }
 
   const driverName = driver?.display_name ?? "Driver";
-  const stops = ride.stops ?? [];
   const amenities = ride.amenities ?? [];
+  const canSeeLive = isOwnRide || (myBooking && myBooking.status !== "cancelled");
 
   return (
     <div className="min-h-screen bg-muted/20">
@@ -233,22 +353,34 @@ const RideDetail = () => {
                 </div>
               </div>
 
-              {/* Stops */}
+              {/* Stops with per-stop fares */}
               {stops.length > 0 && (
                 <div className="mt-8 border-t border-border/60 pt-6">
-                  <h3 className="mb-4 text-sm font-semibold">Pickup & drop points</h3>
+                  <h3 className="mb-4 text-sm font-semibold">Stops & fares from {ride.from_location}</h3>
                   <ol className="relative ml-2 space-y-4 border-l-2 border-dashed border-border pl-6">
-                    {stops.map((s, i) => (
-                      <li key={`${s}-${i}`} className="relative">
-                        <span className={`absolute -left-[31px] top-1 flex h-5 w-5 items-center justify-center rounded-full ring-4 ring-background ${
-                          i === 0 ? "bg-primary" : i === stops.length - 1 ? "bg-secondary" : "bg-muted-foreground/40"
-                        }`} />
-                        <div className="text-sm font-medium">{s}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {i === 0 ? "Pickup" : i === stops.length - 1 ? "Drop-off" : "Stop"}
-                        </div>
-                      </li>
-                    ))}
+                    <li className="relative">
+                      <span className="absolute -left-[31px] top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary ring-4 ring-background" />
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm font-semibold">{ride.from_location}</div>
+                        <div className="font-display text-sm font-bold text-muted-foreground tabular-nums">₹0</div>
+                      </div>
+                      <div className="text-xs text-muted-foreground">Pickup</div>
+                    </li>
+                    {stops.map((s, i) => {
+                      const isLast = i === stops.length - 1;
+                      return (
+                        <li key={s.id} className="relative">
+                          <span className={`absolute -left-[31px] top-1 flex h-5 w-5 items-center justify-center rounded-full ring-4 ring-background ${
+                            isLast ? "bg-secondary" : "bg-muted-foreground/40"
+                          }`} />
+                          <div className="flex items-center justify-between">
+                            <div className="text-sm font-medium">{s.name}</div>
+                            <div className="font-display text-sm font-bold tabular-nums">₹{s.price_from_origin}</div>
+                          </div>
+                          <div className="text-xs text-muted-foreground">{isLast ? "Drop-off" : "Stop"}</div>
+                        </li>
+                      );
+                    })}
                   </ol>
                 </div>
               )}
@@ -312,8 +444,80 @@ const RideDetail = () => {
               </div>
             </div>
 
+            {/* Passengers list with gender — visible to driver and confirmed riders */}
+            {canSeeLive && passengers.length > 0 && (
+              <div className="rounded-3xl bg-card p-8 shadow-soft ring-1 ring-border/60">
+                <h3 className="mb-5 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                  <Users className="h-4 w-4" />
+                  Passengers ({passengers.length})
+                </h3>
+                <ul className="space-y-3">
+                  {passengers.map((p) => (
+                    <li
+                      key={p.passenger_id}
+                      className="flex items-center justify-between rounded-2xl bg-muted/40 px-4 py-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-primary text-sm font-bold text-primary-foreground">
+                          {initialsFor(p.display_name)}
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold">
+                            {p.display_name ?? "Passenger"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {genderLabel(p.gender)} · {p.seats_booked} seat{p.seats_booked > 1 ? "s" : ""}
+                          </div>
+                        </div>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={
+                          p.status === "confirmed"
+                            ? "border-success/40 bg-success/10 text-success"
+                            : "border-accent/40 bg-accent/10 text-accent"
+                        }
+                      >
+                        {p.status}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Live location: visible to driver and confirmed riders */}
+            {canSeeLive && (
+              <>
+                {isOwnRide && (
+                  <div className="rounded-3xl bg-card p-6 shadow-soft ring-1 ring-border/60">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-semibold">
+                          <Navigation className="h-4 w-4 text-primary" />
+                          Share your live location
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Passengers will see your real-time GPS while you drive. Updates every ~5 seconds.
+                        </p>
+                      </div>
+                      <Button
+                        onClick={sharing ? stopSharing : startSharing}
+                        variant={sharing ? "destructive" : "default"}
+                        className="rounded-full"
+                      >
+                        <Power className="mr-2 h-4 w-4" />
+                        {sharing ? "Stop" : "Start"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                <LiveMap location={liveLocation} driverName={driverName} />
+              </>
+            )}
+
             {/* Chat: visible to driver and to passengers with an active booking */}
-            {user && (isOwnRide || (myBooking && myBooking.status !== "cancelled")) && (
+            {user && canSeeLive && (
               <RideChat
                 rideId={ride.id}
                 driverId={ride.driver_id}
@@ -328,7 +532,7 @@ const RideDetail = () => {
               <div className="flex items-baseline justify-between">
                 <div>
                   <div className="font-display text-3xl font-extrabold">₹{ride.price_per_seat}</div>
-                  <div className="text-xs text-muted-foreground">per seat</div>
+                  <div className="text-xs text-muted-foreground">full fare</div>
                 </div>
                 {ride.instant_book && (
                   <Badge className="gap-1 bg-accent/15 text-accent hover:bg-accent/20">
@@ -339,7 +543,11 @@ const RideDetail = () => {
               </div>
 
               <div className="mt-6 space-y-3 border-y border-border/60 py-5 text-sm">
-                <Row label="Seats available" value={`${ride.seats_left} / ${ride.seats_total}`} />
+                <Row
+                  label="Seats available"
+                  value={`${ride.seats_left} / ${ride.seats_total}`}
+                  highlight={ride.seats_left === 0}
+                />
                 <Row label="Service fee" value="₹0" muted />
                 <Row label="You pay" value={`₹${ride.price_per_seat}`} bold />
               </div>
@@ -442,10 +650,22 @@ const Info = ({ icon, label, value }: { icon: React.ReactNode; label: string; va
   </div>
 );
 
-const Row = ({ label, value, muted, bold }: { label: string; value: string; muted?: boolean; bold?: boolean }) => (
+const Row = ({
+  label, value, muted, bold, highlight,
+}: { label: string; value: string; muted?: boolean; bold?: boolean; highlight?: boolean }) => (
   <div className="flex items-center justify-between">
     <span className={muted ? "text-muted-foreground" : ""}>{label}</span>
-    <span className={bold ? "font-display text-lg font-bold" : "font-semibold"}>{value}</span>
+    <span
+      className={
+        highlight
+          ? "font-display text-lg font-bold text-destructive"
+          : bold
+            ? "font-display text-lg font-bold"
+            : "font-semibold"
+      }
+    >
+      {value}
+    </span>
   </div>
 );
 
