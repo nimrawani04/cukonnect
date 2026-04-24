@@ -29,16 +29,19 @@ const Onboarding = () => {
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("user_type")
+        .select("user_type, gender")
         .eq("user_id", user.id)
         .maybeSingle();
       if (cancelled) return;
-      if (data?.user_type) {
+      if (data?.user_type && data?.gender) {
         navigate(data.user_type === "driver" ? "/publish/new" : "/search", {
           replace: true,
         });
         return;
       }
+      // Pre-fill any partial choices so the user only fills what's missing
+      if (data?.user_type) setChoice(data.user_type as Choice);
+      if (data?.gender) setGender(data.gender as Gender);
       setChecking(false);
     })();
     return () => {
