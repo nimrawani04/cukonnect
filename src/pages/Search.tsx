@@ -1,12 +1,76 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ArrowRight, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, Loader2, SlidersHorizontal, Wifi } from "lucide-react";
 import Header from "@/components/site/Header";
 import Footer from "@/components/site/Footer";
 import SearchBar, { CityDataList } from "@/components/site/SearchBar";
 import RideCard from "@/components/site/RideCard";
 import { Button } from "@/components/ui/button";
-import { MOCK_RIDES } from "@/data/rides";
+import { supabase } from "@/integrations/supabase/client";
+import type { Ride } from "@/data/rides";
+import { format } from "date-fns";
+
+type RideRow = {
+  id: string;
+  driver_id: string;
+  from_location: string;
+  to_location: string;
+  ride_date: string;
+  depart_time: string;
+  arrive_time: string;
+  duration: string | null;
+  price_per_seat: number;
+  seats_total: number;
+  seats_left: number;
+  car: string | null;
+  stops: string[] | null;
+  amenities: string[] | null;
+  instant_book: boolean;
+  status: "active" | "completed" | "cancelled";
+  created_at: string;
+};
+
+type DriverProfile = {
+  user_id: string;
+  display_name: string | null;
+  rating: number;
+  trips_count: number;
+  verified: boolean;
+};
+
+const initialsFor = (name: string | null | undefined) => {
+  if (!name) return "D";
+  return name
+    .split(" ")
+    .map((p) => p[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+};
+
+const toRide = (row: RideRow, driver: DriverProfile | undefined): Ride => ({
+  id: row.id,
+  driver: {
+    name: driver?.display_name ?? "Driver",
+    rating: Number(driver?.rating ?? 5),
+    trips: driver?.trips_count ?? 0,
+    verified: driver?.verified ?? false,
+    initials: initialsFor(driver?.display_name),
+  },
+  from: row.from_location,
+  to: row.to_location,
+  date: row.ride_date,
+  departTime: row.depart_time,
+  arriveTime: row.arrive_time,
+  duration: row.duration ?? "—",
+  pricePerSeat: row.price_per_seat,
+  seatsLeft: row.seats_left,
+  car: row.car ?? "—",
+  amenities: row.amenities ?? [],
+  instantBook: row.instant_book,
+  stops: row.stops ?? undefined,
+});
 
 const Search = () => {
   const [params] = useSearchParams();
@@ -15,19 +79,123 @@ const Search = () => {
   const dateStr = params.get("date") ?? "";
   const seats = Number(params.get("seats") ?? 1);
 
-  const rides = useMemo(() => {
-    // For demo, just adapt the from/to of mock rides
-    return MOCK_RIDES.map((r) => ({ ...r, from, to })).filter((r) => r.seatsLeft >= seats);
-  }, [from, to, seats]);
-
   const initialDate = dateStr ? new Date(dateStr) : new Date();
+  const dateKey = format(initialDate, "yyyy-MM-dd");
+
+  const [rows, setRows] = useState<RideRow[]>([]);
+  const [drivers, setDrivers] = useState<Record<string, DriverProfile>>({});
+  const [loading, setLoading] = useState(true);
+  const [live, setLive] = useState(false);
+
+  const fetchDriversFor = async (driverIds: string[]) => {
+    if (driverIds.length === 0) return;
+    const { data } = await supabase
+      .from("profiles")
+      .select("user_id, display_name, rating, trips_count, verified")
+      .in("user_id", driverIds);
+    if (data) {
+      setDrivers((prev) => {
+        const next = { ...prev };
+        for (const p of data as DriverProfile[]) next[p.user_id] = p;
+        return next;
+      });
+    }
+  };
+
+  const load = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("rides")
+      .select("*")
+      .eq("from_location", from)
+      .eq("to_location", to)
+      .eq("ride_date", dateKey)
+      .eq("status", "active")
+      .gte("seats_left", seats)
+      .order("depart_time", { ascending: true });
+
+    if (error || !data) {
+      setRows([]);
+      setLoading(false);
+      return;
+    }
+    setRows(data as RideRow[]);
+    await fetchDriversFor(Array.from(new Set((data as RideRow[]).map((r) => r.driver_id))));
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [from, to, dateKey, seats]);
+
+  // Realtime: any new/updated ride that matches filters appears live
+  useEffect(() => {
+    const matches = (r: RideRow) =>
+      r.from_location === from &&
+      r.to_location === to &&
+      r.ride_date === dateKey &&
+      r.status === "active" &&
+      r.seats_left >= seats;
+
+    const channel = supabase
+      .channel(`search-${from}-${to}-${dateKey}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "rides" },
+        async (payload) => {
+          const r = payload.new as RideRow;
+          if (!matches(r)) return;
+          await fetchDriversFor([r.driver_id]);
+          setRows((prev) =>
+            prev.some((x) => x.id === r.id)
+              ? prev
+              : [...prev, r].sort((a, b) => a.depart_time.localeCompare(b.depart_time)),
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "rides" },
+        async (payload) => {
+          const r = payload.new as RideRow;
+          setRows((prev) => {
+            const exists = prev.some((x) => x.id === r.id);
+            if (matches(r)) {
+              if (exists) return prev.map((x) => (x.id === r.id ? r : x));
+              return [...prev, r].sort((a, b) => a.depart_time.localeCompare(b.depart_time));
+            }
+            // No longer matches — drop it
+            return exists ? prev.filter((x) => x.id !== r.id) : prev;
+          });
+          if (matches(r)) await fetchDriversFor([r.driver_id]);
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "rides" },
+        (payload) => {
+          const r = payload.old as Partial<RideRow>;
+          setRows((prev) => prev.filter((x) => x.id !== r.id));
+        },
+      )
+      .subscribe((status) => setLive(status === "SUBSCRIBED"));
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [from, to, dateKey, seats]);
+
+  const rides = useMemo(
+    () => rows.map((r) => toRide(r, drivers[r.driver_id])),
+    [rows, drivers],
+  );
 
   return (
     <div className="min-h-screen bg-muted/20">
       <CityDataList />
       <Header />
 
-      {/* Search bar bar */}
       <section className="border-b border-border/60 bg-background">
         <div className="container py-6">
           <SearchBar variant="compact" initial={{ from, to, date: initialDate, seats }} />
@@ -35,7 +203,6 @@ const Search = () => {
       </section>
 
       <section className="container grid gap-8 py-10 lg:grid-cols-[260px_1fr]">
-        {/* Filters */}
         <aside className="hidden lg:block">
           <div className="sticky top-24 rounded-3xl bg-card p-6 shadow-soft ring-1 ring-border/60">
             <div className="flex items-center gap-2 text-sm font-semibold">
@@ -67,19 +234,24 @@ const Search = () => {
           </div>
         </aside>
 
-        {/* Results */}
         <div>
           <div className="flex items-center justify-between">
             <div>
               <h1 className="font-display text-2xl font-bold">
                 {from} <ArrowRight className="inline h-5 w-5 text-muted-foreground" /> {to}
               </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {rides.length} ride{rides.length !== 1 ? "s" : ""} available · {seats} seat{seats !== 1 ? "s" : ""}
+              <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+                {loading ? "Loading…" : `${rides.length} ride${rides.length !== 1 ? "s" : ""} available`} ·{" "}
+                {seats} seat{seats !== 1 ? "s" : ""}
+                {live && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-success">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
+                    Live
+                  </span>
+                )}
               </p>
             </div>
             <select className="rounded-full border border-border bg-card px-4 py-2 text-sm font-medium shadow-soft outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <option>Best match</option>
               <option>Earliest departure</option>
               <option>Lowest price</option>
               <option>Highest rated</option>
@@ -87,10 +259,16 @@ const Search = () => {
           </div>
 
           <div className="mt-6 space-y-4">
-            {rides.length === 0 ? (
+            {loading ? (
+              <div className="flex items-center justify-center rounded-3xl bg-card p-10 shadow-soft ring-1 ring-border/60">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : rides.length === 0 ? (
               <div className="rounded-3xl bg-card p-10 text-center shadow-soft ring-1 ring-border/60">
-                <p className="text-muted-foreground">
-                  No rides match your filters. Try a different date or fewer seats.
+                <Wifi className="mx-auto mb-3 h-6 w-6 text-muted-foreground" />
+                <p className="font-medium">No rides published yet for this route & date.</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  This page is live — new rides will appear here automatically as drivers publish them.
                 </p>
               </div>
             ) : (
