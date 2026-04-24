@@ -113,9 +113,42 @@ const Onboarding = () => {
             />
           </div>
 
+          <div className="mt-8">
+            <div className="text-sm font-semibold">Your gender</div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Helps fellow travellers feel safer and informed. Shown on your bookings.
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {([
+                { id: "female", label: "Female" },
+                { id: "male", label: "Male" },
+                { id: "other", label: "Other" },
+                { id: "prefer_not_to_say", label: "Prefer not to say" },
+              ] as { id: Gender; label: string }[]).map((g) => {
+                const active = gender === g.id;
+                return (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => setGender(g.id)}
+                    aria-pressed={active}
+                    className={cn(
+                      "rounded-xl border px-3 py-2.5 text-sm font-medium transition-all",
+                      active
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                    )}
+                  >
+                    {g.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <Button
             onClick={submit}
-            disabled={!choice || saving}
+            disabled={!choice || !gender || saving}
             className="mt-8 h-12 w-full rounded-full text-base"
           >
             {saving ? (
