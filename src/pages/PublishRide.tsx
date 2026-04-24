@@ -698,65 +698,105 @@ const StepStops = ({
   update: <K extends keyof FormState>(k: K, v: FormState[K]) => void;
 }) => {
   const [draft, setDraft] = useState("");
+  const [draftPrice, setDraftPrice] = useState("");
 
   const add = () => {
     const name = draft.trim();
     if (!name) return;
-    update("stops", [...data.stops, { id: newId(), name }]);
+    const price = Math.max(0, Number(draftPrice) || 0);
+    if (price >= data.pricePerSeat && data.pricePerSeat > 0) {
+      toast.error(`Stop fare should be less than the full ₹${data.pricePerSeat} fare`);
+      return;
+    }
+    update("stops", [...data.stops, { id: newId(), name, price }]);
     setDraft("");
+    setDraftPrice("");
   };
   const remove = (id: string) =>
     update("stops", data.stops.filter((s) => s.id !== id));
+  const setPrice = (id: string, price: number) =>
+    update(
+      "stops",
+      data.stops.map((s) => (s.id === id ? { ...s, price: Math.max(0, price) } : s)),
+    );
 
   return (
     <>
       <StepHeader
         icon={<MapPin className="h-5 w-5" />}
         title="Pickup & drop points"
-        desc="Add stops along your route so passengers can join from convenient spots."
+        desc={`Add stops along your route. Set a fare from ${data.from} to each stop — passengers pay based on where they get off.`}
       />
 
-      {/* Visual route */}
+      {/* Visual route with per-stop prices */}
       <div className="rounded-2xl border border-border bg-muted/30 p-5">
         <ol className="relative ml-2 space-y-4 border-l-2 border-dashed border-border pl-6">
           <li className="relative">
             <span className="absolute -left-[31px] top-1 h-5 w-5 rounded-full bg-primary ring-4 ring-card" />
             <div className="text-sm font-semibold">{data.from}</div>
-            <div className="text-xs text-muted-foreground">Pickup</div>
+            <div className="text-xs text-muted-foreground">Pickup · ₹0</div>
           </li>
           {data.stops.map((s) => (
             <li key={s.id} className="relative">
               <span className="absolute -left-[31px] top-1 h-5 w-5 rounded-full bg-muted-foreground/40 ring-4 ring-card" />
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="text-sm font-medium">{s.name}</div>
-                <button
-                  type="button"
-                  onClick={() => remove(s.id)}
-                  className="rounded-full p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                  aria-label="Remove stop"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">₹</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={data.pricePerSeat}
+                      value={s.price}
+                      onChange={(e) => setPrice(s.id, Number(e.target.value))}
+                      className="h-9 w-24 rounded-lg pl-5 text-sm font-semibold"
+                      aria-label={`Fare from ${data.from} to ${s.name}`}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => remove(s.id)}
+                    className="rounded-full p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    aria-label="Remove stop"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
-              <div className="text-xs text-muted-foreground">Stop</div>
+              <div className="text-xs text-muted-foreground">Stop · fare from {data.from}</div>
             </li>
           ))}
           <li className="relative">
             <span className="absolute -left-[31px] top-1 h-5 w-5 rounded-full bg-secondary ring-4 ring-card" />
             <div className="text-sm font-semibold">{data.to}</div>
-            <div className="text-xs text-muted-foreground">Drop-off</div>
+            <div className="text-xs text-muted-foreground">Drop-off · ₹{data.pricePerSeat} (full fare)</div>
           </li>
         </ol>
       </div>
 
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+      <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_140px_auto]">
         <Input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
-          placeholder="e.g. Qazigund, Banihal, Udhampur"
+          placeholder="e.g. Dalgate, Jehangir Chowk"
           className="h-12 rounded-2xl"
         />
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">₹</span>
+          <Input
+            type="number"
+            min={0}
+            max={data.pricePerSeat}
+            value={draftPrice}
+            onChange={(e) => setDraftPrice(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
+            placeholder="Fare"
+            className="h-12 rounded-2xl pl-7"
+            aria-label="Fare from origin to this stop"
+          />
+        </div>
         <Button onClick={add} type="button" className="h-12 rounded-2xl" variant="outline">
           <Plus className="mr-2 h-4 w-4" />
           Add stop
@@ -764,7 +804,7 @@ const StepStops = ({
       </div>
 
       <p className="mt-3 text-xs text-muted-foreground">
-        Stops are optional, but they increase bookings by up to 40%.
+        Tip: enter the fare a passenger pays from <strong>{data.from}</strong> to that stop. The destination uses your full ₹{data.pricePerSeat} fare.
       </p>
     </>
   );
