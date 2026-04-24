@@ -1001,14 +1001,19 @@ const StepReview = ({ data }: { data: FormState }) => {
       {data.stops.length > 0 && (
         <div className="mt-6 rounded-2xl border border-border bg-background p-5">
           <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Stops
+            Stops & fares from {data.from}
           </div>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-3 space-y-1.5">
             {data.stops.map((s) => (
-              <span key={s.id} className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
-                {s.name}
-              </span>
+              <div key={s.id} className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-1.5 text-sm">
+                <span className="font-medium">{s.name}</span>
+                <span className="font-display font-bold tabular-nums">₹{s.price}</span>
+              </div>
             ))}
+            <div className="flex items-center justify-between rounded-lg bg-primary/5 px-3 py-1.5 text-sm">
+              <span className="font-medium">{data.to}</span>
+              <span className="font-display font-bold tabular-nums text-primary">₹{data.pricePerSeat}</span>
+            </div>
           </div>
         </div>
       )}
