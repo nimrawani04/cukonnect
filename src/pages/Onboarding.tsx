@@ -14,6 +14,7 @@ const Onboarding = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const [choice, setChoice] = useState<Choice | null>(null);
+  const [gender, setGender] = useState<Gender | null>(null);
   const [checking, setChecking] = useState(true);
   const [saving, setSaving] = useState(false);
 
