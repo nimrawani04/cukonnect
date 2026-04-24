@@ -50,11 +50,11 @@ const Onboarding = () => {
   }, [user, loading, navigate]);
 
   const submit = async () => {
-    if (!user || !choice) return;
+    if (!user || !choice || !gender) return;
     setSaving(true);
     const { error } = await supabase
       .from("profiles")
-      .update({ user_type: choice })
+      .update({ user_type: choice, gender })
       .eq("user_id", user.id);
     setSaving(false);
     if (error) {
