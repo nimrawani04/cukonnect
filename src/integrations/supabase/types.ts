@@ -58,11 +58,53 @@ export type Database = {
           },
         ]
       }
+      driver_locations: {
+        Row: {
+          accuracy: number | null
+          driver_id: string
+          heading: number | null
+          lat: number
+          lng: number
+          ride_id: string
+          speed: number | null
+          updated_at: string
+        }
+        Insert: {
+          accuracy?: number | null
+          driver_id: string
+          heading?: number | null
+          lat: number
+          lng: number
+          ride_id: string
+          speed?: number | null
+          updated_at?: string
+        }
+        Update: {
+          accuracy?: number | null
+          driver_id?: string
+          heading?: number | null
+          lat?: number
+          lng?: number
+          ride_id?: string
+          speed?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_locations_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: true
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
           created_at: string
           display_name: string | null
+          gender: Database["public"]["Enums"]["gender"] | null
           id: string
           phone: string | null
           rating: number
@@ -76,6 +118,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          gender?: Database["public"]["Enums"]["gender"] | null
           id?: string
           phone?: string | null
           rating?: number
@@ -89,6 +132,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          gender?: Database["public"]["Enums"]["gender"] | null
           id?: string
           phone?: string | null
           rating?: number
@@ -149,6 +193,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "ride_messages_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ride_stops: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          price_from_origin: number
+          reached_at: string | null
+          ride_id: string
+          stop_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          price_from_origin?: number
+          reached_at?: string | null
+          ride_id: string
+          stop_order: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          price_from_origin?: number
+          reached_at?: string | null
+          ride_id?: string
+          stop_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_stops_ride_id_fkey"
             columns: ["ride_id"]
             isOneToOne: false
             referencedRelation: "rides"
@@ -234,6 +316,7 @@ export type Database = {
     }
     Enums: {
       booking_status: "pending" | "confirmed" | "cancelled" | "completed"
+      gender: "male" | "female" | "other" | "prefer_not_to_say"
       payment_status: "paid" | "cash" | "refunded"
       ride_status: "active" | "completed" | "cancelled"
       user_type: "passenger" | "driver"
@@ -365,6 +448,7 @@ export const Constants = {
   public: {
     Enums: {
       booking_status: ["pending", "confirmed", "cancelled", "completed"],
+      gender: ["male", "female", "other", "prefer_not_to_say"],
       payment_status: ["paid", "cash", "refunded"],
       ride_status: ["active", "completed", "cancelled"],
       user_type: ["passenger", "driver"],
