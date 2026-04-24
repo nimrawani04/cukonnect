@@ -139,7 +139,7 @@ const PublishRide = () => {
         data.rules.music ? "Music" : null,
       ].filter(Boolean) as string[];
 
-      const { error } = await supabase.from("rides").insert({
+      const { data: created, error } = await supabase.from("rides").insert({
         driver_id: user.id,
         from_location: data.from,
         to_location: data.to,
@@ -163,8 +163,29 @@ const PublishRide = () => {
         },
         instant_book: data.instantBook,
         status: "active",
-      });
+      }).select("id").maybeSingle();
       if (error) throw error;
+
+      // Save the ordered stops with per-stop price-from-origin.
+      // Always include the destination so passengers see the full fare table.
+      if (created?.id) {
+        const stopRows = [
+          ...data.stops.map((s, i) => ({
+            ride_id: created.id,
+            stop_order: i + 1,
+            name: s.name,
+            price_from_origin: Math.max(0, Math.round(s.price)),
+          })),
+          {
+            ride_id: created.id,
+            stop_order: data.stops.length + 1,
+            name: data.to,
+            price_from_origin: data.pricePerSeat,
+          },
+        ];
+        const { error: stopsErr } = await supabase.from("ride_stops").insert(stopRows);
+        if (stopsErr) throw stopsErr;
+      }
 
       toast.success("Your ride has been published!", {
         description: `${data.from} → ${data.to} on ${format(data.date, "EEE, dd MMM")}`,
