@@ -31,7 +31,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-type Stop = { id: string; name: string };
+type Stop = { id: string; name: string; price: number };
 type LuggageSize = "small" | "medium" | "large";
 
 type FormState = {
