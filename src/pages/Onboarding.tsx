@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 type Choice = "passenger" | "driver";
+type Gender = "male" | "female" | "other" | "prefer_not_to_say";
 
 const Onboarding = () => {
   const navigate = useNavigate();
