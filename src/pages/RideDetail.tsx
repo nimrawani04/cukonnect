@@ -147,7 +147,7 @@ const RideDetail = () => {
     const [{ data: profileData }, { data: stopsData }] = await Promise.all([
       supabase
         .from("profiles")
-        .select("user_id, display_name, rating, trips_count, verified")
+        .select("user_id, display_name, rating, trips_count, verified, phone, share_phone")
         .eq("user_id", rideData.driver_id)
         .maybeSingle(),
       supabase
