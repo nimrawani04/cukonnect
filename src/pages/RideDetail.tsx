@@ -545,6 +545,10 @@ const RideDetail = () => {
                   rideId={ride.id}
                   driverId={ride.driver_id}
                   driverName={driverName}
+                  active={
+                    ride.status === "active" &&
+                    (isOwnRide || (myBooking?.status !== "cancelled"))
+                  }
                 />
               </div>
             )}
