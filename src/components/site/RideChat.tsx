@@ -424,28 +424,34 @@ const RideChat = ({ rideId, driverId, driverName, active = true }: Props) => {
         )}
       </div>
 
-      <form
-        onSubmit={handleSend}
-        className="flex items-center gap-2 border-t border-border/60 px-4 py-3"
-      >
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Write a message..."
-          maxLength={2000}
-          className="flex-1 rounded-full border border-border bg-background px-4 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          disabled={sending}
-        />
-        <Button
-          type="submit"
-          size="icon"
-          disabled={sending || text.trim().length === 0}
-          className="rounded-full"
-          aria-label="Send message"
+      {active ? (
+        <form
+          onSubmit={handleSend}
+          className="flex items-center gap-2 border-t border-border/60 px-4 py-3"
         >
-          {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-        </Button>
-      </form>
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Write a message..."
+            maxLength={2000}
+            className="flex-1 rounded-full border border-border bg-background px-4 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            disabled={sending}
+          />
+          <Button
+            type="submit"
+            size="icon"
+            disabled={sending || text.trim().length === 0}
+            className="rounded-full"
+            aria-label="Send message"
+          >
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          </Button>
+        </form>
+      ) : (
+        <div className="border-t border-border/60 px-6 py-3 text-center text-xs text-muted-foreground">
+          Chat closed — the trip ended or your booking was cancelled.
+        </div>
+      )}
     </div>
   );
 };
