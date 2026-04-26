@@ -108,6 +108,7 @@ export type Database = {
           id: string
           phone: string | null
           rating: number
+          share_phone: boolean
           trips_count: number
           updated_at: string
           user_id: string
@@ -122,6 +123,7 @@ export type Database = {
           id?: string
           phone?: string | null
           rating?: number
+          share_phone?: boolean
           trips_count?: number
           updated_at?: string
           user_id: string
@@ -136,6 +138,7 @@ export type Database = {
           id?: string
           phone?: string | null
           rating?: number
+          share_phone?: boolean
           trips_count?: number
           updated_at?: string
           user_id?: string

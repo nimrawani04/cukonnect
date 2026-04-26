@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   Star, ShieldCheck, Zap, MapPin, Clock, Car, Music2, Wifi, Snowflake,
   MessageCircle, ChevronLeft, Loader2, CheckCircle2, XCircle, AlertCircle,
-  Navigation, Power, Users,
+  Navigation, Power, Users, Phone,
 } from "lucide-react";
 import Header from "@/components/site/Header";
 import Footer from "@/components/site/Footer";
@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import RideChat from "@/components/site/RideChat";
 import LiveMap from "@/components/site/LiveMap";
+import DriverContactSettings from "@/components/site/DriverContactSettings";
 import {
   useShareDriverLocation,
   useLiveDriverLocation,
@@ -45,6 +46,8 @@ type DriverProfile = {
   rating: number;
   trips_count: number;
   verified: boolean;
+  phone: string | null;
+  share_phone: boolean;
 };
 
 type BookingRow = {
@@ -145,7 +148,7 @@ const RideDetail = () => {
     const [{ data: profileData }, { data: stopsData }] = await Promise.all([
       supabase
         .from("profiles")
-        .select("user_id, display_name, rating, trips_count, verified")
+        .select("user_id, display_name, rating, trips_count, verified, phone, share_phone")
         .eq("user_id", rideData.driver_id)
         .maybeSingle(),
       supabase
@@ -430,32 +433,48 @@ const RideDetail = () => {
                     <span>{driver?.trips_count ?? 0} completed trips</span>
                   </div>
                 </div>
-                {canSeeLive ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="rounded-full"
-                    onClick={() => {
-                      document
-                        .getElementById("ride-chat")
-                        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }}
-                  >
-                    <MessageCircle className="mr-2 h-4 w-4" />
-                    {isOwnRide ? "Open chat" : `Message ${driverName.split(" ")[0]}`}
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="rounded-full"
-                    disabled
-                    title="Book a seat to start chatting with the driver"
-                  >
-                    <MessageCircle className="mr-2 h-4 w-4" />
-                    Message
-                  </Button>
-                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  {canSeeLive ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full"
+                      onClick={() => {
+                        document
+                          .getElementById("ride-chat")
+                          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }}
+                    >
+                      <MessageCircle className="mr-2 h-4 w-4" />
+                      {isOwnRide ? "Open chat" : `Message ${driverName.split(" ")[0]}`}
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full"
+                      disabled
+                      title="Book a seat to start chatting with the driver"
+                    >
+                      <MessageCircle className="mr-2 h-4 w-4" />
+                      Message
+                    </Button>
+                  )}
+
+                  {/* Call button: visible to passengers with a non-cancelled booking, when driver opted in */}
+                  {!isOwnRide && canSeeLive && driver?.share_phone && driver?.phone && (
+                    <Button
+                      asChild
+                      size="sm"
+                      className="rounded-full bg-success text-success-foreground hover:bg-success/90"
+                    >
+                      <a href={`tel:${driver.phone.replace(/[^\d+]/g, "")}`}>
+                        <Phone className="mr-2 h-4 w-4" />
+                        Call
+                      </a>
+                    </Button>
+                  )}
+                </div>
               </div>
 
               <div className="mt-6 grid gap-3 border-t border-border/60 pt-6 sm:grid-cols-2">
@@ -537,6 +556,9 @@ const RideDetail = () => {
                 <LiveMap location={liveLocation} driverName={driverName} />
               </>
             )}
+
+            {/* Driver-only: phone sharing settings */}
+            {isOwnRide && <DriverContactSettings onSaved={load} />}
 
             {/* Chat: visible to driver and to passengers with an active booking */}
             {user && canSeeLive && (
