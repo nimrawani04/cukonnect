@@ -557,6 +557,9 @@ const RideDetail = () => {
               </>
             )}
 
+            {/* Driver-only: phone sharing settings */}
+            {isOwnRide && <DriverContactSettings onSaved={load} />}
+
             {/* Chat: visible to driver and to passengers with an active booking */}
             {user && canSeeLive && (
               <div id="ride-chat">
