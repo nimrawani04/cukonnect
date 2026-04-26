@@ -25,6 +25,8 @@ type Props = {
   rideId: string;
   driverId: string;
   driverName: string;
+  /** When false, the chat is read-only with an "expired" notice. */
+  active?: boolean;
 };
 
 const initialsFor = (name: string) =>
