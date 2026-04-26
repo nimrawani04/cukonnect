@@ -540,11 +540,24 @@ const RideDetail = () => {
 
             {/* Chat: visible to driver and to passengers with an active booking */}
             {user && canSeeLive && (
-              <RideChat
-                rideId={ride.id}
-                driverId={ride.driver_id}
-                driverName={driverName}
-              />
+              <div id="ride-chat">
+                <RideChat
+                  rideId={ride.id}
+                  driverId={ride.driver_id}
+                  driverName={driverName}
+                />
+              </div>
+            )}
+
+            {/* Hint for not-yet-booked viewers */}
+            {user && !canSeeLive && !isOwnRide && (
+              <div className="rounded-3xl border border-dashed border-border/60 bg-card p-6 text-center shadow-soft">
+                <MessageCircle className="mx-auto mb-2 h-5 w-5 text-muted-foreground" />
+                <div className="text-sm font-semibold">Chat with {driverName.split(" ")[0]}</div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Book a seat (or send a request) and a private chat with the driver opens here instantly.
+                </p>
+              </div>
             )}
           </div>
 
