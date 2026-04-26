@@ -313,6 +313,13 @@ export type Database = {
         Args: { _ride_id: string; _user_id: string }
         Returns: boolean
       }
+      purge_expired_ride_chats: {
+        Args: never
+        Returns: {
+          messages_deleted: number
+          reads_deleted: number
+        }[]
+      }
     }
     Enums: {
       booking_status: "pending" | "confirmed" | "cancelled" | "completed"
