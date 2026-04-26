@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import RideChat from "@/components/site/RideChat";
 import LiveMap from "@/components/site/LiveMap";
+import DriverContactSettings from "@/components/site/DriverContactSettings";
 import {
   useShareDriverLocation,
   useLiveDriverLocation,
