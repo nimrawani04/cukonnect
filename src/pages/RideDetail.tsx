@@ -430,10 +430,32 @@ const RideDetail = () => {
                     <span>{driver?.trips_count ?? 0} completed trips</span>
                   </div>
                 </div>
-                <Button variant="outline" size="sm" className="rounded-full" disabled>
-                  <MessageCircle className="mr-2 h-4 w-4" />
-                  Message
-                </Button>
+                {canSeeLive ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    onClick={() => {
+                      document
+                        .getElementById("ride-chat")
+                        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                  >
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                    {isOwnRide ? "Open chat" : `Message ${driverName.split(" ")[0]}`}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    disabled
+                    title="Book a seat to start chatting with the driver"
+                  >
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                    Message
+                  </Button>
+                )}
               </div>
 
               <div className="mt-6 grid gap-3 border-t border-border/60 pt-6 sm:grid-cols-2">
