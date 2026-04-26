@@ -291,12 +291,19 @@ const RideChat = ({ rideId, driverId, driverName, active = true }: Props) => {
         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
           <MessageCircle className="h-4 w-4" />
         </span>
-        <div>
+        <div className="flex-1">
           <div className="text-sm font-semibold">Ride chat</div>
           <div className="text-xs text-muted-foreground">
-            Coordinate pickup & details with {driverId === user?.id ? "your passengers" : driverName}
+            {active
+              ? `Coordinate pickup & details with ${driverId === user?.id ? "your passengers" : driverName}`
+              : "This chat is closed. Messages will be deleted within 24 hours."}
           </div>
         </div>
+        {!active && (
+          <span className="rounded-full bg-muted px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            Closed
+          </span>
+        )}
       </div>
 
       <div ref={scrollRef} className="max-h-[420px] min-h-[260px] space-y-5 overflow-y-auto px-6 py-5">
