@@ -430,10 +430,32 @@ const RideDetail = () => {
                     <span>{driver?.trips_count ?? 0} completed trips</span>
                   </div>
                 </div>
-                <Button variant="outline" size="sm" className="rounded-full" disabled>
-                  <MessageCircle className="mr-2 h-4 w-4" />
-                  Message
-                </Button>
+                {canSeeLive ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    onClick={() => {
+                      document
+                        .getElementById("ride-chat")
+                        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                  >
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                    {isOwnRide ? "Open chat" : `Message ${driverName.split(" ")[0]}`}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    disabled
+                    title="Book a seat to start chatting with the driver"
+                  >
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                    Message
+                  </Button>
+                )}
               </div>
 
               <div className="mt-6 grid gap-3 border-t border-border/60 pt-6 sm:grid-cols-2">
@@ -518,11 +540,24 @@ const RideDetail = () => {
 
             {/* Chat: visible to driver and to passengers with an active booking */}
             {user && canSeeLive && (
-              <RideChat
-                rideId={ride.id}
-                driverId={ride.driver_id}
-                driverName={driverName}
-              />
+              <div id="ride-chat">
+                <RideChat
+                  rideId={ride.id}
+                  driverId={ride.driver_id}
+                  driverName={driverName}
+                />
+              </div>
+            )}
+
+            {/* Hint for not-yet-booked viewers */}
+            {user && !canSeeLive && !isOwnRide && (
+              <div className="rounded-3xl border border-dashed border-border/60 bg-card p-6 text-center shadow-soft">
+                <MessageCircle className="mx-auto mb-2 h-5 w-5 text-muted-foreground" />
+                <div className="text-sm font-semibold">Chat with {driverName.split(" ")[0]}</div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Book a seat (or send a request) and a private chat with the driver opens here instantly.
+                </p>
+              </div>
             )}
           </div>
 
