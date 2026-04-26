@@ -1,1 +1,4 @@
 project_id = "sbqhlyryygankofzhial"
+
+[functions.purge-expired-chats]
+verify_jwt = false
