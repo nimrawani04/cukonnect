@@ -45,6 +45,8 @@ type DriverProfile = {
   rating: number;
   trips_count: number;
   verified: boolean;
+  phone: string | null;
+  share_phone: boolean;
 };
 
 type BookingRow = {
