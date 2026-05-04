@@ -13,8 +13,27 @@ import Trips from "./pages/Trips.tsx";
 import Auth from "./pages/Auth.tsx";
 import Onboarding from "./pages/Onboarding.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import { useRideMessageNotifications } from "@/hooks/useRideMessageNotifications";
 
 const queryClient = new QueryClient();
+
+const AppRoutes = () => {
+  useRideMessageNotifications();
+  return (
+    <Routes>
+      <Route path="/" element={<Index />} />
+      <Route path="/auth" element={<Auth />} />
+      <Route path="/onboarding" element={<Onboarding />} />
+      <Route path="/search" element={<Search />} />
+      <Route path="/ride/:id" element={<RideDetail />} />
+      <Route path="/publish" element={<Publish />} />
+      <Route path="/publish/new" element={<PublishRide />} />
+      <Route path="/trips" element={<Trips />} />
+      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -23,18 +42,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/search" element={<Search />} />
-            <Route path="/ride/:id" element={<RideDetail />} />
-            <Route path="/publish" element={<Publish />} />
-            <Route path="/publish/new" element={<PublishRide />} />
-            <Route path="/trips" element={<Trips />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AppRoutes />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
