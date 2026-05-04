@@ -462,7 +462,7 @@ const RideDetail = () => {
                   )}
 
                   {/* Call button: visible to passengers with a non-cancelled booking, when driver opted in */}
-                  {!isOwnRide && canSeeLive && driver?.share_phone && driver?.phone && (
+                  {!isOwnRide && myBooking?.status === "confirmed" && driver?.share_phone && driver?.phone && (
                     <Button
                       asChild
                       size="sm"
