@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   Star, ShieldCheck, Zap, MapPin, Clock, Car, Music2, Wifi, Snowflake,
   MessageCircle, ChevronLeft, Loader2, CheckCircle2, XCircle, AlertCircle,
-  Navigation, Power, Users, Phone,
+  Navigation, Power, Users, Phone, MessageSquare,
 } from "lucide-react";
 import Header from "@/components/site/Header";
 import Footer from "@/components/site/Footer";
@@ -463,16 +463,33 @@ const RideDetail = () => {
 
                   {/* Call button: visible to passengers with a non-cancelled booking, when driver opted in */}
                   {!isOwnRide && myBooking?.status === "confirmed" && driver?.share_phone && driver?.phone && (
-                    <Button
-                      asChild
-                      size="sm"
-                      className="rounded-full bg-success text-success-foreground hover:bg-success/90"
-                    >
-                      <a href={`tel:${driver.phone.replace(/[^\d+]/g, "")}`}>
-                        <Phone className="mr-2 h-4 w-4" />
-                        Call
-                      </a>
-                    </Button>
+                    <>
+                      <Button
+                        asChild
+                        size="sm"
+                        className="rounded-full bg-success text-success-foreground hover:bg-success/90"
+                      >
+                        <a href={`tel:${driver.phone.replace(/[^\d+]/g, "")}`}>
+                          <Phone className="mr-2 h-4 w-4" />
+                          Call
+                        </a>
+                      </Button>
+                      <Button
+                        asChild
+                        size="sm"
+                        variant="outline"
+                        className="rounded-full"
+                      >
+                        <a
+                          href={`sms:${driver.phone.replace(/[^\d+]/g, "")}?body=${encodeURIComponent(
+                            `Hi ${driverName.split(" ")[0]}, regarding our ride from ${ride.from_location} to ${ride.to_location} on ${ride.ride_date}.`,
+                          )}`}
+                        >
+                          <MessageSquare className="mr-2 h-4 w-4" />
+                          SMS
+                        </a>
+                      </Button>
+                    </>
                   )}
                 </div>
               </div>
