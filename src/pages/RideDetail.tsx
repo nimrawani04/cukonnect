@@ -475,19 +475,17 @@ const RideDetail = () => {
                         </a>
                       </Button>
                       <Button
-                        asChild
                         size="sm"
                         variant="outline"
                         className="rounded-full"
+                        onClick={() => {
+                          document
+                            .getElementById("ride-chat")
+                            ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }}
                       >
-                        <a
-                          href={`sms:${driver.phone.replace(/[^\d+]/g, "")}?body=${encodeURIComponent(
-                            `Hi ${driverName.split(" ")[0]}, regarding our ride from ${ride.from_location} to ${ride.to_location} on ${ride.ride_date}.`,
-                          )}`}
-                        >
-                          <MessageSquare className="mr-2 h-4 w-4" />
-                          SMS
-                        </a>
+                        <MessageSquare className="mr-2 h-4 w-4" />
+                        In-app message
                       </Button>
                     </>
                   )}
