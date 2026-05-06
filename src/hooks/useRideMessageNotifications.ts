@@ -256,6 +256,9 @@ export function useRideMessageNotifications() {
     return () => {
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
+      tapCleanupListeners.forEach((s) => {
+        Promise.resolve(s).then((sub) => sub.remove?.()).catch(() => {});
+      });
     };
   }, [user, navigate]);
 }
