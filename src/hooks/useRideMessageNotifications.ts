@@ -93,6 +93,8 @@ export function useRideMessageNotifications() {
         /* noop */
       }
     }
+
+    const showNotification = async (rideId: string, senderId: string, body: string) => {
       let label = rideLabels.current[rideId];
       if (!label) {
         const { data } = await supabase
@@ -116,15 +118,42 @@ export function useRideMessageNotifications() {
         senderNames.current[senderId] = sender;
       }
 
-      // Don't notify if the user is already viewing this ride
+      // Don't notify if the user is already viewing this ride (foreground)
       const onThisRide =
         typeof window !== "undefined" &&
         window.location.pathname === `/ride/${rideId}`;
 
+      const title = `${sender} · ${label}`;
+      const preview = body.length > 120 ? `${body.slice(0, 117)}…` : body;
+
+      // Native (Android/iOS via Capacitor): always schedule when app is
+      // backgrounded so the user sees a system notification; skip when the
+      // app is foreground AND viewing the ride.
+      if (isNative) {
+        if (onThisRide && appStateActive) return;
+        try {
+          await LocalNotifications.schedule({
+            notifications: [
+              {
+                id: Math.floor(Date.now() % 2147483647),
+                title,
+                body: preview,
+                extra: { rideId },
+                smallIcon: "ic_stat_icon_config_sample",
+              },
+            ],
+          });
+        } catch {
+          /* noop */
+        }
+        return;
+      }
+
+      // Web fallback
       if (onThisRide) return;
 
-      const tId = toast(`${sender} · ${label}`, {
-        description: body.length > 120 ? `${body.slice(0, 117)}…` : body,
+      const tId = toast(title, {
+        description: preview,
         action: {
           label: "View",
           onClick: () => navigate(`/ride/${rideId}`),
@@ -132,7 +161,6 @@ export function useRideMessageNotifications() {
       });
       (activeToasts.current[rideId] ||= []).push(tId);
 
-      // Native browser notification (only when tab not focused)
       if (
         typeof window !== "undefined" &&
         "Notification" in window &&
@@ -140,8 +168,8 @@ export function useRideMessageNotifications() {
         document.visibilityState !== "visible"
       ) {
         try {
-          const n = new Notification(`${sender} · ${label}`, {
-            body,
+          const n = new Notification(title, {
+            body: preview,
             tag: `ride-${rideId}`,
           });
           n.onclick = () => {
