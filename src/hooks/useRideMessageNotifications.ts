@@ -1,8 +1,13 @@
 import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { Capacitor } from "@capacitor/core";
+import { LocalNotifications } from "@capacitor/local-notifications";
+import { App as CapacitorApp } from "@capacitor/app";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+
+const isNative = Capacitor.isNativePlatform();
 
 /**
  * Subscribes to new ride_messages for rides the user is actively involved in
@@ -57,9 +62,27 @@ export function useRideMessageNotifications() {
     if (!user) return;
 
     let cancelled = false;
+    let appStateActive = true;
+    const tapCleanupListeners: Array<{ remove: () => void } | Promise<{ remove: () => void }>> = [];
 
-    // Ask for notification permission once (non-blocking).
-    if (
+    // Request permissions (native + web)
+    if (isNative) {
+      LocalNotifications.requestPermissions().catch(() => {});
+      // Track app foreground/background state
+      const sub = CapacitorApp.addListener("appStateChange", ({ isActive }) => {
+        appStateActive = isActive;
+      });
+      tapCleanupListeners.push(sub);
+      // Handle taps on local notifications -> navigate to ride
+      const tapSub = LocalNotifications.addListener(
+        "localNotificationActionPerformed",
+        (action) => {
+          const rideId = action.notification.extra?.rideId as string | undefined;
+          if (rideId) navigate(`/ride/${rideId}`);
+        },
+      );
+      tapCleanupListeners.push(tapSub);
+    } else if (
       typeof window !== "undefined" &&
       "Notification" in window &&
       Notification.permission === "default"
@@ -72,7 +95,6 @@ export function useRideMessageNotifications() {
     }
 
     const showNotification = async (rideId: string, senderId: string, body: string) => {
-      // Resolve ride label
       let label = rideLabels.current[rideId];
       if (!label) {
         const { data } = await supabase
@@ -96,15 +118,42 @@ export function useRideMessageNotifications() {
         senderNames.current[senderId] = sender;
       }
 
-      // Don't notify if the user is already viewing this ride
+      // Don't notify if the user is already viewing this ride (foreground)
       const onThisRide =
         typeof window !== "undefined" &&
         window.location.pathname === `/ride/${rideId}`;
 
+      const title = `${sender} · ${label}`;
+      const preview = body.length > 120 ? `${body.slice(0, 117)}…` : body;
+
+      // Native (Android/iOS via Capacitor): always schedule when app is
+      // backgrounded so the user sees a system notification; skip when the
+      // app is foreground AND viewing the ride.
+      if (isNative) {
+        if (onThisRide && appStateActive) return;
+        try {
+          await LocalNotifications.schedule({
+            notifications: [
+              {
+                id: Math.floor(Date.now() % 2147483647),
+                title,
+                body: preview,
+                extra: { rideId },
+                smallIcon: "ic_stat_icon_config_sample",
+              },
+            ],
+          });
+        } catch {
+          /* noop */
+        }
+        return;
+      }
+
+      // Web fallback
       if (onThisRide) return;
 
-      const tId = toast(`${sender} · ${label}`, {
-        description: body.length > 120 ? `${body.slice(0, 117)}…` : body,
+      const tId = toast(title, {
+        description: preview,
         action: {
           label: "View",
           onClick: () => navigate(`/ride/${rideId}`),
@@ -112,7 +161,6 @@ export function useRideMessageNotifications() {
       });
       (activeToasts.current[rideId] ||= []).push(tId);
 
-      // Native browser notification (only when tab not focused)
       if (
         typeof window !== "undefined" &&
         "Notification" in window &&
@@ -120,8 +168,8 @@ export function useRideMessageNotifications() {
         document.visibilityState !== "visible"
       ) {
         try {
-          const n = new Notification(`${sender} · ${label}`, {
-            body,
+          const n = new Notification(title, {
+            body: preview,
             tag: `ride-${rideId}`,
           });
           n.onclick = () => {
@@ -208,6 +256,9 @@ export function useRideMessageNotifications() {
     return () => {
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
+      tapCleanupListeners.forEach((s) => {
+        Promise.resolve(s).then((sub) => sub.remove?.()).catch(() => {});
+      });
     };
   }, [user, navigate]);
 }
