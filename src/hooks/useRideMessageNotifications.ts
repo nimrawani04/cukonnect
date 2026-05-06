@@ -62,9 +62,27 @@ export function useRideMessageNotifications() {
     if (!user) return;
 
     let cancelled = false;
+    let appStateActive = true;
+    const tapCleanupListeners: Array<{ remove: () => void } | Promise<{ remove: () => void }>> = [];
 
-    // Ask for notification permission once (non-blocking).
-    if (
+    // Request permissions (native + web)
+    if (isNative) {
+      LocalNotifications.requestPermissions().catch(() => {});
+      // Track app foreground/background state
+      const sub = CapacitorApp.addListener("appStateChange", ({ isActive }) => {
+        appStateActive = isActive;
+      });
+      tapCleanupListeners.push(sub);
+      // Handle taps on local notifications -> navigate to ride
+      const tapSub = LocalNotifications.addListener(
+        "localNotificationActionPerformed",
+        (action) => {
+          const rideId = action.notification.extra?.rideId as string | undefined;
+          if (rideId) navigate(`/ride/${rideId}`);
+        },
+      );
+      tapCleanupListeners.push(tapSub);
+    } else if (
       typeof window !== "undefined" &&
       "Notification" in window &&
       Notification.permission === "default"
@@ -75,9 +93,6 @@ export function useRideMessageNotifications() {
         /* noop */
       }
     }
-
-    const showNotification = async (rideId: string, senderId: string, body: string) => {
-      // Resolve ride label
       let label = rideLabels.current[rideId];
       if (!label) {
         const { data } = await supabase
