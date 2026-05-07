@@ -12,13 +12,17 @@ import PublishRide from "./pages/PublishRide.tsx";
 import Trips from "./pages/Trips.tsx";
 import Auth from "./pages/Auth.tsx";
 import Onboarding from "./pages/Onboarding.tsx";
+import Profile from "./pages/Profile.tsx";
+import About from "./pages/About.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import { useRideMessageNotifications } from "@/hooks/useRideMessageNotifications";
+import { useTheme } from "@/hooks/useTheme";
 
 const queryClient = new QueryClient();
 
 const AppRoutes = () => {
   useRideMessageNotifications();
+  useTheme();
   return (
     <Routes>
       <Route path="/" element={<Index />} />
@@ -29,6 +33,8 @@ const AppRoutes = () => {
       <Route path="/publish" element={<Publish />} />
       <Route path="/publish/new" element={<PublishRide />} />
       <Route path="/trips" element={<Trips />} />
+      <Route path="/profile" element={<Profile />} />
+      <Route path="/about" element={<About />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="*" element={<NotFound />} />
     </Routes>
