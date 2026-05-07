@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Mountain, Menu, LogOut } from "lucide-react";
+import { Mountain, Menu, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -52,9 +52,10 @@ const Header = () => {
           {user ? (
             <>
               <RoleSwitcher />
-              <span className="text-sm text-muted-foreground">
-                {user.email}
-              </span>
+              <Button variant="ghost" size="sm" onClick={() => navigate("/profile")}>
+                <User className="mr-1 h-4 w-4" />
+                Profile
+              </Button>
               <Button variant="ghost" size="sm" onClick={() => signOut()}>
                 <LogOut className="mr-1 h-4 w-4" />
                 Sign out
@@ -93,6 +94,10 @@ const Header = () => {
                 {user ? (
                   <>
                     <RoleSwitcher className="w-full justify-between" />
+                    <Button variant="outline" onClick={() => navigate("/profile")}>
+                      <User className="mr-1 h-4 w-4" />
+                      Profile
+                    </Button>
                     <Button variant="outline" onClick={() => signOut()}>
                       <LogOut className="mr-1 h-4 w-4" />
                       Sign out
