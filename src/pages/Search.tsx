@@ -66,6 +66,7 @@ const toRide = (row: RideRow, driver: DriverProfile | undefined): Ride => ({
   duration: row.duration ?? "—",
   pricePerSeat: row.price_per_seat,
   seatsLeft: row.seats_left,
+  seatsTotal: row.seats_total,
   car: row.car ?? "—",
   amenities: row.amenities ?? [],
   instantBook: row.instant_book,
