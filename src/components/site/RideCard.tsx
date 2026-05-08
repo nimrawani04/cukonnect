@@ -86,9 +86,14 @@ const RideCard = ({ ride }: { ride: Ride }) => {
           </div>
           <div className="mt-3 text-right">
             <div className="text-xs font-medium text-secondary">{ride.seatsLeft} left</div>
-            {ride.seatsTotal !== undefined && ride.seatsTotal - ride.seatsLeft > 0 && (
+            {ride.seatsTotal !== undefined && ride.seatsTotal - ride.seatsLeft - (ride.seatsHeld ?? 0) > 0 && (
               <div className="text-[11px] text-muted-foreground">
-                {ride.seatsTotal - ride.seatsLeft} booked
+                {ride.seatsTotal - ride.seatsLeft - (ride.seatsHeld ?? 0)} booked
+              </div>
+            )}
+            {(ride.seatsHeld ?? 0) > 0 && (
+              <div className="text-[11px] font-medium text-accent">
+                {ride.seatsHeld} held
               </div>
             )}
             <Button size="sm" className="mt-2 rounded-full">

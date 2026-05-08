@@ -32,6 +32,7 @@ type RideRow = {
   price_per_seat: number;
   seats_total: number;
   seats_left: number;
+  seats_held: number;
   car: string | null;
   stops: string[] | null;
   amenities: string[] | null;
@@ -624,13 +625,26 @@ const RideDetail = () => {
                   value={`${ride.seats_left} / ${ride.seats_total}`}
                   highlight={ride.seats_left === 0}
                 />
-                <Row
-                  label="Booked so far"
-                  value={`${ride.seats_total - ride.seats_left} ${
-                    ride.seats_total - ride.seats_left === 1 ? "passenger" : "passengers"
-                  }`}
-                  muted
-                />
+                {(() => {
+                  const held = ride.seats_held ?? 0;
+                  const confirmed = Math.max(0, ride.seats_total - ride.seats_left - held);
+                  return (
+                    <>
+                      <Row
+                        label="Booked (confirmed)"
+                        value={`${confirmed} ${confirmed === 1 ? "passenger" : "passengers"}`}
+                        muted
+                      />
+                      {held > 0 && (
+                        <Row
+                          label="Held (awaiting approval)"
+                          value={`${held} ${held === 1 ? "seat" : "seats"}`}
+                          accent
+                        />
+                      )}
+                    </>
+                  );
+                })()}
                 <Row label="Service fee" value="₹0" muted />
                 <Row label="You pay" value={`₹${ride.price_per_seat}`} bold />
               </div>
@@ -734,17 +748,19 @@ const Info = ({ icon, label, value }: { icon: React.ReactNode; label: string; va
 );
 
 const Row = ({
-  label, value, muted, bold, highlight,
-}: { label: string; value: string; muted?: boolean; bold?: boolean; highlight?: boolean }) => (
+  label, value, muted, bold, highlight, accent,
+}: { label: string; value: string; muted?: boolean; bold?: boolean; highlight?: boolean; accent?: boolean }) => (
   <div className="flex items-center justify-between">
-    <span className={muted ? "text-muted-foreground" : ""}>{label}</span>
+    <span className={muted ? "text-muted-foreground" : accent ? "text-accent" : ""}>{label}</span>
     <span
       className={
         highlight
           ? "font-display text-lg font-bold text-destructive"
-          : bold
-            ? "font-display text-lg font-bold"
-            : "font-semibold"
+          : accent
+            ? "font-semibold text-accent"
+            : bold
+              ? "font-display text-lg font-bold"
+              : "font-semibold"
       }
     >
       {value}

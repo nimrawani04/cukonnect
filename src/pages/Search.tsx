@@ -22,6 +22,7 @@ type RideRow = {
   price_per_seat: number;
   seats_total: number;
   seats_left: number;
+  seats_held: number;
   car: string | null;
   stops: string[] | null;
   amenities: string[] | null;
@@ -49,7 +50,11 @@ const initialsFor = (name: string | null | undefined) => {
     .toUpperCase();
 };
 
-const toRide = (row: RideRow, driver: DriverProfile | undefined): Ride => ({
+const toRide = (
+  row: RideRow,
+  driver: DriverProfile | undefined,
+  seatsHeld: number,
+): Ride => ({
   id: row.id,
   driver: {
     name: driver?.display_name ?? "Driver",
@@ -67,6 +72,7 @@ const toRide = (row: RideRow, driver: DriverProfile | undefined): Ride => ({
   pricePerSeat: row.price_per_seat,
   seatsLeft: row.seats_left,
   seatsTotal: row.seats_total,
+  seatsHeld,
   car: row.car ?? "—",
   amenities: row.amenities ?? [],
   instantBook: row.instant_book,
@@ -188,7 +194,7 @@ const Search = () => {
   }, [from, to, dateKey, seats]);
 
   const rides = useMemo(
-    () => rows.map((r) => toRide(r, drivers[r.driver_id])),
+    () => rows.map((r) => toRide(r, drivers[r.driver_id], r.seats_held ?? 0)),
     [rows, drivers],
   );
 

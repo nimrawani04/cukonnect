@@ -256,6 +256,7 @@ export type Database = {
           price_per_seat: number
           ride_date: string
           rules: Json | null
+          seats_held: number
           seats_left: number
           seats_total: number
           status: Database["public"]["Enums"]["ride_status"]
@@ -277,6 +278,7 @@ export type Database = {
           price_per_seat: number
           ride_date: string
           rules?: Json | null
+          seats_held?: number
           seats_left?: number
           seats_total?: number
           status?: Database["public"]["Enums"]["ride_status"]
@@ -298,6 +300,7 @@ export type Database = {
           price_per_seat?: number
           ride_date?: string
           rules?: Json | null
+          seats_held?: number
           seats_left?: number
           seats_total?: number
           status?: Database["public"]["Enums"]["ride_status"]
