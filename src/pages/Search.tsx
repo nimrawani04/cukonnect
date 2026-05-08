@@ -49,7 +49,11 @@ const initialsFor = (name: string | null | undefined) => {
     .toUpperCase();
 };
 
-const toRide = (row: RideRow, driver: DriverProfile | undefined): Ride => ({
+const toRide = (
+  row: RideRow,
+  driver: DriverProfile | undefined,
+  seatsHeld: number,
+): Ride => ({
   id: row.id,
   driver: {
     name: driver?.display_name ?? "Driver",
@@ -67,6 +71,7 @@ const toRide = (row: RideRow, driver: DriverProfile | undefined): Ride => ({
   pricePerSeat: row.price_per_seat,
   seatsLeft: row.seats_left,
   seatsTotal: row.seats_total,
+  seatsHeld,
   car: row.car ?? "—",
   amenities: row.amenities ?? [],
   instantBook: row.instant_book,
