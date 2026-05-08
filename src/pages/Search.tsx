@@ -194,7 +194,7 @@ const Search = () => {
   }, [from, to, dateKey, seats]);
 
   const rides = useMemo(
-    () => rows.map((r) => toRide(r, drivers[r.driver_id])),
+    () => rows.map((r) => toRide(r, drivers[r.driver_id], r.seats_held ?? 0)),
     [rows, drivers],
   );
 
