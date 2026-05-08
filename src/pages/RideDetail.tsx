@@ -625,13 +625,26 @@ const RideDetail = () => {
                   value={`${ride.seats_left} / ${ride.seats_total}`}
                   highlight={ride.seats_left === 0}
                 />
-                <Row
-                  label="Booked so far"
-                  value={`${ride.seats_total - ride.seats_left} ${
-                    ride.seats_total - ride.seats_left === 1 ? "passenger" : "passengers"
-                  }`}
-                  muted
-                />
+                {(() => {
+                  const held = ride.seats_held ?? 0;
+                  const confirmed = Math.max(0, ride.seats_total - ride.seats_left - held);
+                  return (
+                    <>
+                      <Row
+                        label="Booked (confirmed)"
+                        value={`${confirmed} ${confirmed === 1 ? "passenger" : "passengers"}`}
+                        muted
+                      />
+                      {held > 0 && (
+                        <Row
+                          label="Held (awaiting approval)"
+                          value={`${held} ${held === 1 ? "seat" : "seats"}`}
+                          accent
+                        />
+                      )}
+                    </>
+                  );
+                })()}
                 <Row label="Service fee" value="₹0" muted />
                 <Row label="You pay" value={`₹${ride.price_per_seat}`} bold />
               </div>
