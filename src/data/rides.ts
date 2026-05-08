@@ -10,6 +10,7 @@ export type Ride = {
   pricePerSeat: number;
   seatsLeft: number;
   seatsTotal?: number;
+  seatsHeld?: number;
   car: string;
   amenities: string[];
   instantBook: boolean;
