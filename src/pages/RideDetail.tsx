@@ -748,17 +748,19 @@ const Info = ({ icon, label, value }: { icon: React.ReactNode; label: string; va
 );
 
 const Row = ({
-  label, value, muted, bold, highlight,
-}: { label: string; value: string; muted?: boolean; bold?: boolean; highlight?: boolean }) => (
+  label, value, muted, bold, highlight, accent,
+}: { label: string; value: string; muted?: boolean; bold?: boolean; highlight?: boolean; accent?: boolean }) => (
   <div className="flex items-center justify-between">
-    <span className={muted ? "text-muted-foreground" : ""}>{label}</span>
+    <span className={muted ? "text-muted-foreground" : accent ? "text-accent" : ""}>{label}</span>
     <span
       className={
         highlight
           ? "font-display text-lg font-bold text-destructive"
-          : bold
-            ? "font-display text-lg font-bold"
-            : "font-semibold"
+          : accent
+            ? "font-semibold text-accent"
+            : bold
+              ? "font-display text-lg font-bold"
+              : "font-semibold"
       }
     >
       {value}
