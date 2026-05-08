@@ -22,6 +22,7 @@ type RideRow = {
   price_per_seat: number;
   seats_total: number;
   seats_left: number;
+  seats_held: number;
   car: string | null;
   stops: string[] | null;
   amenities: string[] | null;
