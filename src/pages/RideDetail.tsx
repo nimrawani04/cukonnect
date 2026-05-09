@@ -667,18 +667,39 @@ const RideDetail = () => {
             {/* Driver-only: phone sharing settings */}
             {isOwnRide && <DriverContactSettings onSaved={load} />}
 
-            {/* Chat: visible to driver and to passengers with an active booking */}
+            {/* Chat: visible to driver and to passengers with an active booking. Strictly 1-on-1 between driver ↔ passenger. */}
             {user && canSeeLive && (
               <div id="ride-chat">
-                <RideChat
-                  rideId={ride.id}
-                  driverId={ride.driver_id}
-                  driverName={driverName}
-                  active={
-                    ride.status === "active" &&
-                    (isOwnRide || (myBooking?.status !== "cancelled"))
-                  }
-                />
+                {isOwnRide && passengers.length === 0 ? (
+                  <div className="rounded-3xl border border-dashed border-border/60 bg-card p-6 text-center shadow-soft">
+                    <MessageCircle className="mx-auto mb-2 h-5 w-5 text-muted-foreground" />
+                    <div className="text-sm font-semibold">No passengers yet</div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      A private chat opens here when someone books your ride.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {isOwnRide && activeThreadId && (
+                      <div className="mb-2 px-1 text-xs text-muted-foreground">
+                        Chatting with{" "}
+                        <span className="font-semibold text-foreground">
+                          {passengers.find((p) => p.passenger_id === activeThreadId)?.display_name ?? "Passenger"}
+                        </span>
+                      </div>
+                    )}
+                    <RideChat
+                      rideId={ride.id}
+                      driverId={ride.driver_id}
+                      driverName={driverName}
+                      threadPassengerId={activeThreadId}
+                      active={
+                        ride.status === "active" &&
+                        (isOwnRide || (myBooking?.status !== "cancelled"))
+                      }
+                    />
+                  </>
+                )}
               </div>
             )}
 
