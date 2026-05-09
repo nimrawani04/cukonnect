@@ -12,6 +12,7 @@ type Message = {
   sender_id: string;
   body: string;
   created_at: string;
+  thread_passenger_id?: string | null;
   _pending?: boolean;
 };
 
@@ -25,6 +26,13 @@ type Props = {
   rideId: string;
   driverId: string;
   driverName: string;
+  /**
+   * Identifies the 1-on-1 thread between the driver and a single passenger.
+   * - For the driver: the currently selected passenger's user_id.
+   * - For a passenger: their own user_id.
+   * If null, the chat shows a placeholder (e.g. driver hasn't picked a thread yet).
+   */
+  threadPassengerId: string | null;
   /** When false, the chat is read-only with an "expired" notice. */
   active?: boolean;
 };
