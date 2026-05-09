@@ -688,17 +688,39 @@ const StepSeats = ({
       </div>
     </div>
 
-    <div className="mt-6">
-      <Label htmlFor="car">Vehicle</Label>
-      <div className="relative mt-2">
-        <Car className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+    <div className="mt-6 grid gap-4 md:grid-cols-2">
+      <div>
+        <Label htmlFor="car">
+          Vehicle <span className="text-destructive">*</span>
+        </Label>
+        <div className="relative mt-2">
+          <Car className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            id="car"
+            value={data.car}
+            onChange={(e) => update("car", e.target.value)}
+            placeholder="e.g. Toyota Innova, white"
+            className="h-12 rounded-2xl pl-10"
+            required
+          />
+        </div>
+      </div>
+      <div>
+        <Label htmlFor="carNumber">
+          Vehicle number <span className="text-destructive">*</span>
+        </Label>
         <Input
-          id="car"
-          value={data.car}
-          onChange={(e) => update("car", e.target.value)}
-          placeholder="e.g. Toyota Innova, white"
-          className="h-12 rounded-2xl pl-10"
+          id="carNumber"
+          value={data.carNumber}
+          onChange={(e) => update("carNumber", e.target.value.toUpperCase())}
+          placeholder="e.g. JK01 AB 1234"
+          maxLength={15}
+          className="mt-2 h-12 rounded-2xl font-mono uppercase tracking-wider"
+          required
         />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Helps passengers identify and trust your car at pickup.
+        </p>
       </div>
     </div>
 
