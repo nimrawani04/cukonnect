@@ -222,9 +222,34 @@ const RideDetail = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, user?.id]);
 
+  // Anonymized seat summary visible to everyone (counts + gender mix)
+  const loadSeatSummary = async (rideId: string) => {
+    const { data } = await supabase.rpc("get_ride_seat_summary", { _ride_id: rideId });
+    if (data && data.length > 0) {
+      setSeatSummary(data[0] as any);
+    }
+  };
+
   useEffect(() => {
-    if (ride?.id) loadPassengers(ride.id);
+    if (ride?.id) {
+      loadPassengers(ride.id);
+      loadSeatSummary(ride.id);
+    }
   }, [ride?.id]);
+
+  // Default chat thread: passenger sees their own; driver auto-picks first passenger
+  useEffect(() => {
+    if (!user || !ride) return;
+    if (user.id === ride.driver_id) {
+      if (!activeThreadId && passengers.length > 0) {
+        setActiveThreadId(passengers[0].passenger_id);
+      } else if (activeThreadId && !passengers.some((p) => p.passenger_id === activeThreadId)) {
+        setActiveThreadId(passengers[0]?.passenger_id ?? null);
+      }
+    } else {
+      setActiveThreadId(user.id);
+    }
+  }, [user, ride, passengers, activeThreadId]);
 
   // Realtime: subscribe to ride changes (seats_left, status) and bookings on this ride
   useEffect(() => {
