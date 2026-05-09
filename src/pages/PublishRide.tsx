@@ -829,6 +829,7 @@ const StepStops = ({
       <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_140px_auto]">
         <Input
           value={draft}
+          list="kashmir-cities"
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
           placeholder="e.g. Dalgate, Jehangir Chowk"
