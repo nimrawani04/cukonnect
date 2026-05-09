@@ -324,6 +324,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_ride_seat_summary: {
+        Args: { _ride_id: string }
+        Returns: {
+          confirmed_seats: number
+          female_count: number
+          male_count: number
+          other_count: number
+          pending_seats: number
+          unknown_count: number
+        }[]
+      }
       is_ride_participant: {
         Args: { _ride_id: string; _user_id: string }
         Returns: boolean
