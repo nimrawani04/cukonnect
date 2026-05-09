@@ -79,9 +79,15 @@ const RideChat = ({ rideId, driverId, driverName, threadPassengerId, active = tr
   const [reads, setReads] = useState<ReadReceipt[]>([]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  // Initial load (messages + read receipts)
+  // Initial load (messages + read receipts) — scoped to the active thread
   useEffect(() => {
     let cancelled = false;
+    if (!threadPassengerId) {
+      setMessages([]);
+      setReads([]);
+      setLoading(false);
+      return;
+    }
     const load = async () => {
       setLoading(true);
       const [{ data: msgs, error: msgErr }, { data: rcpts }] = await Promise.all([
@@ -89,11 +95,13 @@ const RideChat = ({ rideId, driverId, driverName, threadPassengerId, active = tr
           .from("ride_messages")
           .select("*")
           .eq("ride_id", rideId)
+          .eq("thread_passenger_id", threadPassengerId)
           .order("created_at", { ascending: true }),
         supabase
           .from("ride_message_reads")
           .select("message_id, user_id, read_at")
-          .eq("ride_id", rideId),
+          .eq("ride_id", rideId)
+          .eq("thread_passenger_id", threadPassengerId),
       ]);
       if (cancelled) return;
       if (msgErr) {
@@ -109,7 +117,7 @@ const RideChat = ({ rideId, driverId, driverName, threadPassengerId, active = tr
     return () => {
       cancelled = true;
     };
-  }, [rideId]);
+  }, [rideId, threadPassengerId]);
 
   // Realtime subscription — messages + read receipts
   useEffect(() => {
