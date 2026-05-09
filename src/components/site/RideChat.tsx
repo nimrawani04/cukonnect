@@ -12,6 +12,7 @@ type Message = {
   sender_id: string;
   body: string;
   created_at: string;
+  thread_passenger_id?: string | null;
   _pending?: boolean;
 };
 
@@ -25,6 +26,13 @@ type Props = {
   rideId: string;
   driverId: string;
   driverName: string;
+  /**
+   * Identifies the 1-on-1 thread between the driver and a single passenger.
+   * - For the driver: the currently selected passenger's user_id.
+   * - For a passenger: their own user_id.
+   * If null, the chat shows a placeholder (e.g. driver hasn't picked a thread yet).
+   */
+  threadPassengerId: string | null;
   /** When false, the chat is read-only with an "expired" notice. */
   active?: boolean;
 };
@@ -61,7 +69,7 @@ const formatDay = (iso: string) => {
   return d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
 };
 
-const RideChat = ({ rideId, driverId, driverName, active = true }: Props) => {
+const RideChat = ({ rideId, driverId, driverName, threadPassengerId, active = true }: Props) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,9 +79,15 @@ const RideChat = ({ rideId, driverId, driverName, active = true }: Props) => {
   const [reads, setReads] = useState<ReadReceipt[]>([]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  // Initial load (messages + read receipts)
+  // Initial load (messages + read receipts) — scoped to the active thread
   useEffect(() => {
     let cancelled = false;
+    if (!threadPassengerId) {
+      setMessages([]);
+      setReads([]);
+      setLoading(false);
+      return;
+    }
     const load = async () => {
       setLoading(true);
       const [{ data: msgs, error: msgErr }, { data: rcpts }] = await Promise.all([
@@ -81,11 +95,13 @@ const RideChat = ({ rideId, driverId, driverName, active = true }: Props) => {
           .from("ride_messages")
           .select("*")
           .eq("ride_id", rideId)
+          .eq("thread_passenger_id", threadPassengerId)
           .order("created_at", { ascending: true }),
         supabase
           .from("ride_message_reads")
           .select("message_id, user_id, read_at")
-          .eq("ride_id", rideId),
+          .eq("ride_id", rideId)
+          .eq("thread_passenger_id", threadPassengerId),
       ]);
       if (cancelled) return;
       if (msgErr) {
@@ -101,12 +117,13 @@ const RideChat = ({ rideId, driverId, driverName, active = true }: Props) => {
     return () => {
       cancelled = true;
     };
-  }, [rideId]);
+  }, [rideId, threadPassengerId]);
 
-  // Realtime subscription — messages + read receipts
+  // Realtime subscription — messages + read receipts (filtered to active thread)
   useEffect(() => {
+    if (!threadPassengerId) return;
     const channel = supabase
-      .channel(`ride_messages:${rideId}`)
+      .channel(`ride_messages:${rideId}:${threadPassengerId}`)
       .on(
         "postgres_changes",
         {
@@ -117,6 +134,7 @@ const RideChat = ({ rideId, driverId, driverName, active = true }: Props) => {
         },
         (payload) => {
           const m = payload.new as Message;
+          if (m.thread_passenger_id !== threadPassengerId) return;
           setMessages((prev) =>
             prev.some((x) => x.id === m.id) ? prev : [...prev, m],
           );
@@ -131,7 +149,8 @@ const RideChat = ({ rideId, driverId, driverName, active = true }: Props) => {
           filter: `ride_id=eq.${rideId}`,
         },
         (payload) => {
-          const r = payload.new as ReadReceipt;
+          const r = payload.new as ReadReceipt & { thread_passenger_id?: string };
+          if (r.thread_passenger_id && r.thread_passenger_id !== threadPassengerId) return;
           setReads((prev) =>
             prev.some((x) => x.message_id === r.message_id && x.user_id === r.user_id)
               ? prev
@@ -143,7 +162,7 @@ const RideChat = ({ rideId, driverId, driverName, active = true }: Props) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [rideId]);
+  }, [rideId, threadPassengerId]);
 
   // Mark incoming messages as read for the current user
   useEffect(() => {
@@ -161,6 +180,7 @@ const RideChat = ({ rideId, driverId, driverName, active = true }: Props) => {
         message_id: m.id,
         user_id: user.id,
         ride_id: rideId,
+        thread_passenger_id: threadPassengerId,
       }));
       const { error } = await supabase.from("ride_message_reads").insert(rows);
       if (cancelled || error) return;
@@ -227,6 +247,10 @@ const RideChat = ({ rideId, driverId, driverName, active = true }: Props) => {
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    if (!threadPassengerId) {
+      toast.error("Pick a passenger to message");
+      return;
+    }
     const body = text.trim();
     if (!body) return;
     if (body.length > 2000) {
@@ -240,6 +264,7 @@ const RideChat = ({ rideId, driverId, driverName, active = true }: Props) => {
       sender_id: user.id,
       body,
       created_at: new Date().toISOString(),
+      thread_passenger_id: threadPassengerId,
       _pending: true,
     };
     setMessages((prev) => [...prev, optimistic]);
@@ -247,7 +272,7 @@ const RideChat = ({ rideId, driverId, driverName, active = true }: Props) => {
     setSending(true);
     const { data, error } = await supabase
       .from("ride_messages")
-      .insert({ ride_id: rideId, sender_id: user.id, body })
+      .insert({ ride_id: rideId, sender_id: user.id, body, thread_passenger_id: threadPassengerId })
       .select()
       .single();
     setSending(false);

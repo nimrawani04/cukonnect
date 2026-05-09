@@ -43,6 +43,7 @@ type FormState = {
   seats: number;
   pricePerSeat: number;
   car: string;
+  carNumber: string;
   stops: Stop[];
   luggage: LuggageSize;
   rules: {
@@ -81,6 +82,7 @@ const PublishRide = () => {
     seats: 3,
     pricePerSeat: 800,
     car: "",
+    carNumber: "",
     stops: [],
     luggage: "medium",
     rules: { smoking: false, pets: false, music: true, chatty: true, ac: true },
@@ -102,10 +104,30 @@ const PublishRide = () => {
     switch (step) {
       case 1:
         return data.from.trim().length > 1 && data.to.trim().length > 1 && data.from !== data.to;
-      case 2:
-        return !!data.date && !!data.departTime && !!data.arriveTime;
+      case 2: {
+        if (!data.date || !data.departTime || !data.arriveTime) return false;
+        // If the chosen date is today, depart time must be in the future
+        const today = new Date();
+        const isToday =
+          data.date.getFullYear() === today.getFullYear() &&
+          data.date.getMonth() === today.getMonth() &&
+          data.date.getDate() === today.getDate();
+        if (isToday) {
+          const [h, m] = data.departTime.split(":").map(Number);
+          const depart = new Date(data.date);
+          depart.setHours(h || 0, m || 0, 0, 0);
+          if (depart.getTime() <= Date.now()) return false;
+        }
+        return true;
+      }
       case 3:
-        return data.seats >= 1 && data.seats <= 8 && data.pricePerSeat >= 50 && data.car.trim().length > 1;
+        return (
+          data.seats >= 1 &&
+          data.seats <= 8 &&
+          data.pricePerSeat >= 50 &&
+          data.car.trim().length > 1 &&
+          data.carNumber.trim().length >= 4
+        );
       case 4:
         return true;
       case 5:
@@ -119,7 +141,13 @@ const PublishRide = () => {
 
   const next = () => {
     if (!stepValid) {
-      toast.error("Please complete the required fields.");
+      if (step === 2 && data.date) {
+        toast.error("Departure time must be in the future for today's date.");
+      } else if (step === 3) {
+        toast.error("Vehicle name and number are required.");
+      } else {
+        toast.error("Please complete the required fields.");
+      }
       return;
     }
     if (step < STEPS.length) setStep(step + 1);
@@ -150,6 +178,7 @@ const PublishRide = () => {
         seats_total: data.seats,
         seats_left: data.seats,
         car: data.car,
+        car_number: data.carNumber.trim().toUpperCase() || null,
         stops: data.stops.map((s) => s.name),
         amenities,
         rules: {
@@ -659,17 +688,39 @@ const StepSeats = ({
       </div>
     </div>
 
-    <div className="mt-6">
-      <Label htmlFor="car">Vehicle</Label>
-      <div className="relative mt-2">
-        <Car className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+    <div className="mt-6 grid gap-4 md:grid-cols-2">
+      <div>
+        <Label htmlFor="car">
+          Vehicle <span className="text-destructive">*</span>
+        </Label>
+        <div className="relative mt-2">
+          <Car className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            id="car"
+            value={data.car}
+            onChange={(e) => update("car", e.target.value)}
+            placeholder="e.g. Toyota Innova, white"
+            className="h-12 rounded-2xl pl-10"
+            required
+          />
+        </div>
+      </div>
+      <div>
+        <Label htmlFor="carNumber">
+          Vehicle number <span className="text-destructive">*</span>
+        </Label>
         <Input
-          id="car"
-          value={data.car}
-          onChange={(e) => update("car", e.target.value)}
-          placeholder="e.g. Toyota Innova, white"
-          className="h-12 rounded-2xl pl-10"
+          id="carNumber"
+          value={data.carNumber}
+          onChange={(e) => update("carNumber", e.target.value.toUpperCase())}
+          placeholder="e.g. JK01 AB 1234"
+          maxLength={15}
+          className="mt-2 h-12 rounded-2xl font-mono uppercase tracking-wider"
+          required
         />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Helps passengers identify and trust your car at pickup.
+        </p>
       </div>
     </div>
 
@@ -778,6 +829,7 @@ const StepStops = ({
       <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_140px_auto]">
         <Input
           value={draft}
+          list="kashmir-cities"
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
           placeholder="e.g. Dalgate, Jehangir Chowk"
@@ -985,7 +1037,16 @@ const StepReview = ({ data }: { data: FormState }) => {
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <SummaryCard label="Seats offered" value={`${data.seats} seats`} />
         <SummaryCard label="Price per seat" value={`₹${data.pricePerSeat}`} />
-        <SummaryCard label="Vehicle" value={data.car || "—"} />
+        <SummaryCard
+          label="Vehicle"
+          value={
+            data.car
+              ? data.carNumber
+                ? `${data.car} · ${data.carNumber}`
+                : data.car
+              : "—"
+          }
+        />
         <SummaryCard
           label="Booking"
           value={data.instantBook ? "Instant booking" : "Approval required"}

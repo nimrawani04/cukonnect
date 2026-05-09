@@ -34,6 +34,7 @@ type RideRow = {
   seats_left: number;
   seats_held: number;
   car: string | null;
+  car_number: string | null;
   stops: string[] | null;
   amenities: string[] | null;
   rules: Record<string, unknown> | null;
@@ -119,6 +120,15 @@ const RideDetail = () => {
   const [booking, setBooking] = useState(false);
   const [stops, setStops] = useState<RideStop[]>([]);
   const [passengers, setPassengers] = useState<Passenger[]>([]);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [seatSummary, setSeatSummary] = useState<{
+    confirmed_seats: number;
+    pending_seats: number;
+    female_count: number;
+    male_count: number;
+    other_count: number;
+    unknown_count: number;
+  } | null>(null);
 
   const isOwnRide = !!user && !!ride && user.id === ride.driver_id;
 
@@ -212,9 +222,34 @@ const RideDetail = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, user?.id]);
 
+  // Anonymized seat summary visible to everyone (counts + gender mix)
+  const loadSeatSummary = async (rideId: string) => {
+    const { data } = await supabase.rpc("get_ride_seat_summary", { _ride_id: rideId });
+    if (data && data.length > 0) {
+      setSeatSummary(data[0] as any);
+    }
+  };
+
   useEffect(() => {
-    if (ride?.id) loadPassengers(ride.id);
+    if (ride?.id) {
+      loadPassengers(ride.id);
+      loadSeatSummary(ride.id);
+    }
   }, [ride?.id]);
+
+  // Default chat thread: passenger sees their own; driver auto-picks first passenger
+  useEffect(() => {
+    if (!user || !ride) return;
+    if (user.id === ride.driver_id) {
+      if (!activeThreadId && passengers.length > 0) {
+        setActiveThreadId(passengers[0].passenger_id);
+      } else if (activeThreadId && !passengers.some((p) => p.passenger_id === activeThreadId)) {
+        setActiveThreadId(passengers[0]?.passenger_id ?? null);
+      }
+    } else {
+      setActiveThreadId(user.id);
+    }
+  }, [user, ride, passengers, activeThreadId]);
 
   // Realtime: subscribe to ride changes (seats_left, status) and bookings on this ride
   useEffect(() => {
@@ -231,7 +266,10 @@ const RideDetail = () => {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "bookings", filter: `ride_id=eq.${ride.id}` },
-        () => loadPassengers(ride.id),
+        () => {
+          loadPassengers(ride.id);
+          loadSeatSummary(ride.id);
+        },
       )
       .on(
         "postgres_changes",
@@ -494,51 +532,104 @@ const RideDetail = () => {
               </div>
 
               <div className="mt-6 grid gap-3 border-t border-border/60 pt-6 sm:grid-cols-2">
-                <Info icon={<Car className="h-4 w-4" />} label="Vehicle" value={ride.car ?? "—"} />
+                <Info
+                  icon={<Car className="h-4 w-4" />}
+                  label="Vehicle"
+                  value={
+                    ride.car
+                      ? ride.car_number
+                        ? `${ride.car} · ${ride.car_number}`
+                        : ride.car
+                      : "—"
+                  }
+                />
                 <Info icon={<Snowflake className="h-4 w-4" />} label="AC" value={amenities.includes("AC") ? "Yes" : "No"} />
                 <Info icon={<Music2 className="h-4 w-4" />} label="Music" value={amenities.includes("Music") ? "Yes" : "On request"} />
                 <Info icon={<Wifi className="h-4 w-4" />} label="Wi-Fi" value={amenities.includes("Wi-Fi") ? "Yes" : "No"} />
               </div>
             </div>
 
-            {/* Passengers list with gender — visible to driver and confirmed riders */}
-            {canSeeLive && passengers.length > 0 && (
+            {/* Anonymous seat & gender breakdown — visible to everyone (no names) */}
+            {seatSummary && (seatSummary.confirmed_seats + seatSummary.pending_seats) > 0 && (
+              <div className="rounded-3xl bg-card p-6 shadow-soft ring-1 ring-border/60">
+                <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                  <Users className="h-4 w-4" />
+                  Who's on board
+                </h3>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <SummaryStat label="Confirmed" value={seatSummary.confirmed_seats} accent="success" />
+                  <SummaryStat label="Pending" value={seatSummary.pending_seats} accent="accent" />
+                  <SummaryStat label="Female" value={seatSummary.female_count} accent="primary" />
+                  <SummaryStat label="Male" value={seatSummary.male_count} accent="primary" />
+                </div>
+                {(seatSummary.other_count + seatSummary.unknown_count) > 0 && (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    + {seatSummary.other_count + seatSummary.unknown_count} passenger
+                    {seatSummary.other_count + seatSummary.unknown_count > 1 ? "s" : ""} (gender not specified)
+                  </p>
+                )}
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Names stay private until you book. Only seat counts and gender are shown.
+                </p>
+              </div>
+            )}
+
+            {/* Driver-only: passenger list doubles as private-chat thread switcher */}
+            {isOwnRide && passengers.length > 0 && (
               <div className="rounded-3xl bg-card p-8 shadow-soft ring-1 ring-border/60">
                 <h3 className="mb-5 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                   <Users className="h-4 w-4" />
                   Passengers ({passengers.length})
                 </h3>
                 <ul className="space-y-3">
-                  {passengers.map((p) => (
-                    <li
-                      key={p.passenger_id}
-                      className="flex items-center justify-between rounded-2xl bg-muted/40 px-4 py-3"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-primary text-sm font-bold text-primary-foreground">
-                          {initialsFor(p.display_name)}
-                        </div>
-                        <div>
-                          <div className="text-sm font-semibold">
-                            {p.display_name ?? "Passenger"}
+                  {passengers.map((p) => {
+                    const isActive = activeThreadId === p.passenger_id;
+                    return (
+                      <li key={p.passenger_id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveThreadId(p.passenger_id);
+                            document
+                              .getElementById("ride-chat")
+                              ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                          }}
+                          className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left transition-colors ${
+                            isActive
+                              ? "bg-primary/10 ring-2 ring-primary"
+                              : "bg-muted/40 hover:bg-muted/60"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-primary text-sm font-bold text-primary-foreground">
+                              {initialsFor(p.display_name)}
+                            </div>
+                            <div>
+                              <div className="text-sm font-semibold">
+                                {p.display_name ?? "Passenger"}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {genderLabel(p.gender)} · {p.seats_booked} seat{p.seats_booked > 1 ? "s" : ""}
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {genderLabel(p.gender)} · {p.seats_booked} seat{p.seats_booked > 1 ? "s" : ""}
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant="outline"
+                              className={
+                                p.status === "confirmed"
+                                  ? "border-success/40 bg-success/10 text-success"
+                                  : "border-accent/40 bg-accent/10 text-accent"
+                              }
+                            >
+                              {p.status}
+                            </Badge>
+                            <MessageCircle className={`h-4 w-4 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
                           </div>
-                        </div>
-                      </div>
-                      <Badge
-                        variant="outline"
-                        className={
-                          p.status === "confirmed"
-                            ? "border-success/40 bg-success/10 text-success"
-                            : "border-accent/40 bg-accent/10 text-accent"
-                        }
-                      >
-                        {p.status}
-                      </Badge>
-                    </li>
-                  ))}
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}
@@ -576,18 +667,39 @@ const RideDetail = () => {
             {/* Driver-only: phone sharing settings */}
             {isOwnRide && <DriverContactSettings onSaved={load} />}
 
-            {/* Chat: visible to driver and to passengers with an active booking */}
+            {/* Chat: visible to driver and to passengers with an active booking. Strictly 1-on-1 between driver ↔ passenger. */}
             {user && canSeeLive && (
               <div id="ride-chat">
-                <RideChat
-                  rideId={ride.id}
-                  driverId={ride.driver_id}
-                  driverName={driverName}
-                  active={
-                    ride.status === "active" &&
-                    (isOwnRide || (myBooking?.status !== "cancelled"))
-                  }
-                />
+                {isOwnRide && passengers.length === 0 ? (
+                  <div className="rounded-3xl border border-dashed border-border/60 bg-card p-6 text-center shadow-soft">
+                    <MessageCircle className="mx-auto mb-2 h-5 w-5 text-muted-foreground" />
+                    <div className="text-sm font-semibold">No passengers yet</div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      A private chat opens here when someone books your ride.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {isOwnRide && activeThreadId && (
+                      <div className="mb-2 px-1 text-xs text-muted-foreground">
+                        Chatting with{" "}
+                        <span className="font-semibold text-foreground">
+                          {passengers.find((p) => p.passenger_id === activeThreadId)?.display_name ?? "Passenger"}
+                        </span>
+                      </div>
+                    )}
+                    <RideChat
+                      rideId={ride.id}
+                      driverId={ride.driver_id}
+                      driverName={driverName}
+                      threadPassengerId={activeThreadId}
+                      active={
+                        ride.status === "active" &&
+                        (isOwnRide || (myBooking?.status !== "cancelled"))
+                      }
+                    />
+                  </>
+                )}
               </div>
             )}
 
@@ -767,5 +879,30 @@ const Row = ({
     </span>
   </div>
 );
+
+const SummaryStat = ({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number;
+  accent: "success" | "accent" | "primary";
+}) => {
+  const styles =
+    accent === "success"
+      ? "border-success/30 bg-success/5 text-success"
+      : accent === "accent"
+        ? "border-accent/30 bg-accent/5 text-accent"
+        : "border-primary/30 bg-primary/5 text-primary";
+  return (
+    <div className={`rounded-2xl border p-3 text-center ${styles}`}>
+      <div className="font-display text-2xl font-bold tabular-nums">{value}</div>
+      <div className="mt-0.5 text-[11px] font-semibold uppercase tracking-wider opacity-80">
+        {label}
+      </div>
+    </div>
+  );
+};
 
 export default RideDetail;
