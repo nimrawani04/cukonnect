@@ -152,18 +152,21 @@ export type Database = {
           message_id: string
           read_at: string
           ride_id: string
+          thread_passenger_id: string | null
           user_id: string
         }
         Insert: {
           message_id: string
           read_at?: string
           ride_id: string
+          thread_passenger_id?: string | null
           user_id: string
         }
         Update: {
           message_id?: string
           read_at?: string
           ride_id?: string
+          thread_passenger_id?: string | null
           user_id?: string
         }
         Relationships: []
@@ -175,6 +178,7 @@ export type Database = {
           id: string
           ride_id: string
           sender_id: string
+          thread_passenger_id: string | null
           updated_at: string
         }
         Insert: {
@@ -183,6 +187,7 @@ export type Database = {
           id?: string
           ride_id: string
           sender_id: string
+          thread_passenger_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -191,6 +196,7 @@ export type Database = {
           id?: string
           ride_id?: string
           sender_id?: string
+          thread_passenger_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -246,6 +252,7 @@ export type Database = {
           amenities: string[] | null
           arrive_time: string
           car: string | null
+          car_number: string | null
           created_at: string
           depart_time: string
           driver_id: string
@@ -268,6 +275,7 @@ export type Database = {
           amenities?: string[] | null
           arrive_time: string
           car?: string | null
+          car_number?: string | null
           created_at?: string
           depart_time: string
           driver_id: string
@@ -290,6 +298,7 @@ export type Database = {
           amenities?: string[] | null
           arrive_time?: string
           car?: string | null
+          car_number?: string | null
           created_at?: string
           depart_time?: string
           driver_id?: string
