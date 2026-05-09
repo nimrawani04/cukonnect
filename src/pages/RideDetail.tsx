@@ -880,4 +880,29 @@ const Row = ({
   </div>
 );
 
+const SummaryStat = ({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number;
+  accent: "success" | "accent" | "primary";
+}) => {
+  const styles =
+    accent === "success"
+      ? "border-success/30 bg-success/5 text-success"
+      : accent === "accent"
+        ? "border-accent/30 bg-accent/5 text-accent"
+        : "border-primary/30 bg-primary/5 text-primary";
+  return (
+    <div className={`rounded-2xl border p-3 text-center ${styles}`}>
+      <div className="font-display text-2xl font-bold tabular-nums">{value}</div>
+      <div className="mt-0.5 text-[11px] font-semibold uppercase tracking-wider opacity-80">
+        {label}
+      </div>
+    </div>
+  );
+};
+
 export default RideDetail;
