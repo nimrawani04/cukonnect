@@ -34,6 +34,7 @@ type RideRow = {
   seats_left: number;
   seats_held: number;
   car: string | null;
+  car_number: string | null;
   stops: string[] | null;
   amenities: string[] | null;
   rules: Record<string, unknown> | null;
@@ -119,6 +120,7 @@ const RideDetail = () => {
   const [booking, setBooking] = useState(false);
   const [stops, setStops] = useState<RideStop[]>([]);
   const [passengers, setPassengers] = useState<Passenger[]>([]);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
 
   const isOwnRide = !!user && !!ride && user.id === ride.driver_id;
 
