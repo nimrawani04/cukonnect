@@ -43,6 +43,7 @@ type FormState = {
   seats: number;
   pricePerSeat: number;
   car: string;
+  carNumber: string;
   stops: Stop[];
   luggage: LuggageSize;
   rules: {
