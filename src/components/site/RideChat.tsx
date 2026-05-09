@@ -180,6 +180,7 @@ const RideChat = ({ rideId, driverId, driverName, threadPassengerId, active = tr
         message_id: m.id,
         user_id: user.id,
         ride_id: rideId,
+        thread_passenger_id: threadPassengerId,
       }));
       const { error } = await supabase.from("ride_message_reads").insert(rows);
       if (cancelled || error) return;
