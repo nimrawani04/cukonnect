@@ -69,7 +69,7 @@ const formatDay = (iso: string) => {
   return d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
 };
 
-const RideChat = ({ rideId, driverId, driverName, active = true }: Props) => {
+const RideChat = ({ rideId, driverId, driverName, threadPassengerId, active = true }: Props) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
