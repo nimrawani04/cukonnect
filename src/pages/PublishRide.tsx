@@ -178,6 +178,7 @@ const PublishRide = () => {
         seats_total: data.seats,
         seats_left: data.seats,
         car: data.car,
+        car_number: data.carNumber.trim().toUpperCase() || null,
         stops: data.stops.map((s) => s.name),
         amenities,
         rules: {
