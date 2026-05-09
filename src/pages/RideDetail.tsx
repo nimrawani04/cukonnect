@@ -266,7 +266,10 @@ const RideDetail = () => {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "bookings", filter: `ride_id=eq.${ride.id}` },
-        () => loadPassengers(ride.id),
+        () => {
+          loadPassengers(ride.id);
+          loadSeatSummary(ride.id);
+        },
       )
       .on(
         "postgres_changes",
@@ -529,7 +532,17 @@ const RideDetail = () => {
               </div>
 
               <div className="mt-6 grid gap-3 border-t border-border/60 pt-6 sm:grid-cols-2">
-                <Info icon={<Car className="h-4 w-4" />} label="Vehicle" value={ride.car ?? "—"} />
+                <Info
+                  icon={<Car className="h-4 w-4" />}
+                  label="Vehicle"
+                  value={
+                    ride.car
+                      ? ride.car_number
+                        ? `${ride.car} · ${ride.car_number}`
+                        : ride.car
+                      : "—"
+                  }
+                />
                 <Info icon={<Snowflake className="h-4 w-4" />} label="AC" value={amenities.includes("AC") ? "Yes" : "No"} />
                 <Info icon={<Music2 className="h-4 w-4" />} label="Music" value={amenities.includes("Music") ? "Yes" : "On request"} />
                 <Info icon={<Wifi className="h-4 w-4" />} label="Wi-Fi" value={amenities.includes("Wi-Fi") ? "Yes" : "No"} />
