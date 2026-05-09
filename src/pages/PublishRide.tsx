@@ -82,6 +82,7 @@ const PublishRide = () => {
     seats: 3,
     pricePerSeat: 800,
     car: "",
+    carNumber: "",
     stops: [],
     luggage: "medium",
     rules: { smoking: false, pets: false, music: true, chatty: true, ac: true },
@@ -103,10 +104,30 @@ const PublishRide = () => {
     switch (step) {
       case 1:
         return data.from.trim().length > 1 && data.to.trim().length > 1 && data.from !== data.to;
-      case 2:
-        return !!data.date && !!data.departTime && !!data.arriveTime;
+      case 2: {
+        if (!data.date || !data.departTime || !data.arriveTime) return false;
+        // If the chosen date is today, depart time must be in the future
+        const today = new Date();
+        const isToday =
+          data.date.getFullYear() === today.getFullYear() &&
+          data.date.getMonth() === today.getMonth() &&
+          data.date.getDate() === today.getDate();
+        if (isToday) {
+          const [h, m] = data.departTime.split(":").map(Number);
+          const depart = new Date(data.date);
+          depart.setHours(h || 0, m || 0, 0, 0);
+          if (depart.getTime() <= Date.now()) return false;
+        }
+        return true;
+      }
       case 3:
-        return data.seats >= 1 && data.seats <= 8 && data.pricePerSeat >= 50 && data.car.trim().length > 1;
+        return (
+          data.seats >= 1 &&
+          data.seats <= 8 &&
+          data.pricePerSeat >= 50 &&
+          data.car.trim().length > 1 &&
+          data.carNumber.trim().length >= 4
+        );
       case 4:
         return true;
       case 5:
@@ -120,7 +141,13 @@ const PublishRide = () => {
 
   const next = () => {
     if (!stepValid) {
-      toast.error("Please complete the required fields.");
+      if (step === 2 && data.date) {
+        toast.error("Departure time must be in the future for today's date.");
+      } else if (step === 3) {
+        toast.error("Vehicle name and number are required.");
+      } else {
+        toast.error("Please complete the required fields.");
+      }
       return;
     }
     if (step < STEPS.length) setStep(step + 1);
