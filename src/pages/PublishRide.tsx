@@ -1037,7 +1037,16 @@ const StepReview = ({ data }: { data: FormState }) => {
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <SummaryCard label="Seats offered" value={`${data.seats} seats`} />
         <SummaryCard label="Price per seat" value={`₹${data.pricePerSeat}`} />
-        <SummaryCard label="Vehicle" value={data.car || "—"} />
+        <SummaryCard
+          label="Vehicle"
+          value={
+            data.car
+              ? data.carNumber
+                ? `${data.car} · ${data.carNumber}`
+                : data.car
+              : "—"
+          }
+        />
         <SummaryCard
           label="Booking"
           value={data.instantBook ? "Instant booking" : "Approval required"}
