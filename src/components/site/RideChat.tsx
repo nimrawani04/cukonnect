@@ -119,10 +119,11 @@ const RideChat = ({ rideId, driverId, driverName, threadPassengerId, active = tr
     };
   }, [rideId, threadPassengerId]);
 
-  // Realtime subscription — messages + read receipts
+  // Realtime subscription — messages + read receipts (filtered to active thread)
   useEffect(() => {
+    if (!threadPassengerId) return;
     const channel = supabase
-      .channel(`ride_messages:${rideId}`)
+      .channel(`ride_messages:${rideId}:${threadPassengerId}`)
       .on(
         "postgres_changes",
         {
@@ -133,6 +134,7 @@ const RideChat = ({ rideId, driverId, driverName, threadPassengerId, active = tr
         },
         (payload) => {
           const m = payload.new as Message;
+          if (m.thread_passenger_id !== threadPassengerId) return;
           setMessages((prev) =>
             prev.some((x) => x.id === m.id) ? prev : [...prev, m],
           );
@@ -147,7 +149,8 @@ const RideChat = ({ rideId, driverId, driverName, threadPassengerId, active = tr
           filter: `ride_id=eq.${rideId}`,
         },
         (payload) => {
-          const r = payload.new as ReadReceipt;
+          const r = payload.new as ReadReceipt & { thread_passenger_id?: string };
+          if (r.thread_passenger_id && r.thread_passenger_id !== threadPassengerId) return;
           setReads((prev) =>
             prev.some((x) => x.message_id === r.message_id && x.user_id === r.user_id)
               ? prev
@@ -159,7 +162,7 @@ const RideChat = ({ rideId, driverId, driverName, threadPassengerId, active = tr
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [rideId]);
+  }, [rideId, threadPassengerId]);
 
   // Mark incoming messages as read for the current user
   useEffect(() => {
