@@ -247,6 +247,10 @@ const RideChat = ({ rideId, driverId, driverName, threadPassengerId, active = tr
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    if (!threadPassengerId) {
+      toast.error("Pick a passenger to message");
+      return;
+    }
     const body = text.trim();
     if (!body) return;
     if (body.length > 2000) {
@@ -260,6 +264,7 @@ const RideChat = ({ rideId, driverId, driverName, threadPassengerId, active = tr
       sender_id: user.id,
       body,
       created_at: new Date().toISOString(),
+      thread_passenger_id: threadPassengerId,
       _pending: true,
     };
     setMessages((prev) => [...prev, optimistic]);
@@ -267,7 +272,7 @@ const RideChat = ({ rideId, driverId, driverName, threadPassengerId, active = tr
     setSending(true);
     const { data, error } = await supabase
       .from("ride_messages")
-      .insert({ ride_id: rideId, sender_id: user.id, body })
+      .insert({ ride_id: rideId, sender_id: user.id, body, thread_passenger_id: threadPassengerId })
       .select()
       .single();
     setSending(false);
