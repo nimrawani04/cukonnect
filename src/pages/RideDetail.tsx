@@ -121,6 +121,14 @@ const RideDetail = () => {
   const [stops, setStops] = useState<RideStop[]>([]);
   const [passengers, setPassengers] = useState<Passenger[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [seatSummary, setSeatSummary] = useState<{
+    confirmed_seats: number;
+    pending_seats: number;
+    female_count: number;
+    male_count: number;
+    other_count: number;
+    unknown_count: number;
+  } | null>(null);
 
   const isOwnRide = !!user && !!ride && user.id === ride.driver_id;
 
