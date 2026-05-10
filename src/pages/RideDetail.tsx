@@ -333,6 +333,10 @@ const RideDetail = () => {
       toast.error("No seats left on this ride");
       return;
     }
+    if (!stopOrderValid) {
+      toast.error("Pickup must be before drop-off along the route");
+      return;
+    }
     setBooking(true);
     const { data, error } = await supabase
       .from("bookings")
