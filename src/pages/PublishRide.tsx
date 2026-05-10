@@ -73,12 +73,19 @@ const PublishRide = () => {
   const { user, loading: authLoading } = useAuth();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  // Tick every 30s so time-based validation re-evaluates in real time
+  const [, setNowTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setNowTick((n) => n + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
   const [data, setData] = useState<FormState>({
     from: "Srinagar",
     to: "Jammu",
     date: undefined,
     departTime: "06:30",
-    arriveTime: "14:00",
+    arriveTime: "",
     seats: 3,
     pricePerSeat: 800,
     car: "",
@@ -105,7 +112,7 @@ const PublishRide = () => {
       case 1:
         return data.from.trim().length > 1 && data.to.trim().length > 1 && data.from !== data.to;
       case 2: {
-        if (!data.date || !data.departTime || !data.arriveTime) return false;
+        if (!data.date || !data.departTime) return false;
         // If the chosen date is today, depart time must be in the future
         const today = new Date();
         const isToday =
@@ -117,6 +124,10 @@ const PublishRide = () => {
           const depart = new Date(data.date);
           depart.setHours(h || 0, m || 0, 0, 0);
           if (depart.getTime() <= Date.now()) return false;
+        }
+        // Arrival is optional; if provided it must be after departure
+        if (data.arriveTime) {
+          if (data.arriveTime <= data.departTime) return false;
         }
         return true;
       }
@@ -137,12 +148,17 @@ const PublishRide = () => {
       default:
         return false;
     }
-  }, [step, data]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, data, setNowTick]);
 
   const next = () => {
     if (!stepValid) {
       if (step === 2 && data.date) {
-        toast.error("Departure time must be in the future for today's date.");
+        if (data.arriveTime && data.arriveTime <= data.departTime) {
+          toast.error("Arrival time must be later than the departure time.");
+        } else {
+          toast.error("Departure time must be in the future for today's date.");
+        }
       } else if (step === 3) {
         toast.error("Vehicle name and number are required.");
       } else {
@@ -160,6 +176,25 @@ const PublishRide = () => {
       return navigate("/auth");
     }
     if (!data.date) return toast.error("Please pick a date");
+    // Re-validate departure freshness right before publishing
+    {
+      const today = new Date();
+      const isToday =
+        data.date.getFullYear() === today.getFullYear() &&
+        data.date.getMonth() === today.getMonth() &&
+        data.date.getDate() === today.getDate();
+      if (isToday) {
+        const [h, m] = data.departTime.split(":").map(Number);
+        const depart = new Date(data.date);
+        depart.setHours(h || 0, m || 0, 0, 0);
+        if (depart.getTime() <= Date.now()) {
+          return toast.error("Departure time has already passed. Please update it.");
+        }
+      }
+      if (data.arriveTime && data.arriveTime <= data.departTime) {
+        return toast.error("Arrival time must be later than departure.");
+      }
+    }
     setSubmitting(true);
     try {
       const amenities = [
@@ -173,7 +208,7 @@ const PublishRide = () => {
         to_location: data.to,
         ride_date: format(data.date, "yyyy-MM-dd"),
         depart_time: data.departTime,
-        arrive_time: data.arriveTime,
+        arrive_time: data.arriveTime ? data.arriveTime : null,
         price_per_seat: data.pricePerSeat,
         seats_total: data.seats,
         seats_left: data.seats,
@@ -582,7 +617,9 @@ const StepWhen = ({
       </div>
 
       <div>
-        <Label htmlFor="depart">Departure</Label>
+        <Label htmlFor="depart">
+          Departure <span className="text-destructive">*</span>
+        </Label>
         <div className="relative mt-2">
           <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -591,12 +628,15 @@ const StepWhen = ({
             value={data.departTime}
             onChange={(e) => update("departTime", e.target.value)}
             className="h-12 rounded-2xl pl-10"
+            required
           />
         </div>
       </div>
 
       <div>
-        <Label htmlFor="arrive">Estimated arrival</Label>
+        <Label htmlFor="arrive">
+          Estimated arrival <span className="text-muted-foreground">(optional)</span>
+        </Label>
         <div className="relative mt-2">
           <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -606,6 +646,11 @@ const StepWhen = ({
             onChange={(e) => update("arriveTime", e.target.value)}
             className="h-12 rounded-2xl pl-10"
           />
+          {data.arriveTime && data.arriveTime <= data.departTime && (
+            <p className="mt-1 text-xs text-destructive">
+              Arrival must be later than departure.
+            </p>
+          )}
         </div>
       </div>
     </div>

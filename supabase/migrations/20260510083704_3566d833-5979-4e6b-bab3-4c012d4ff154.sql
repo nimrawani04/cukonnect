@@ -1,0 +1,1 @@
+ALTER TABLE public.rides ALTER COLUMN arrive_time DROP NOT NULL;

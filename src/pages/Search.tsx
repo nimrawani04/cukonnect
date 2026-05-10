@@ -109,13 +109,30 @@ const Search = () => {
     }
   };
 
+  // A ride matches if the searched `from` and `to` appear (in order) in the
+  // ride's full sequence: [from_location, ...stops, to_location].
+  // Comparison is case-insensitive and whitespace-trimmed.
+  const norm = (s: string) => s.trim().toLowerCase();
+  const matchesRoute = (r: RideRow) => {
+    const seq = [r.from_location, ...(r.stops ?? []), r.to_location].map(norm);
+    const fi = seq.indexOf(norm(from));
+    const ti = seq.indexOf(norm(to));
+    return fi !== -1 && ti !== -1 && fi < ti;
+  };
+
+  const matches = (r: RideRow) =>
+    r.ride_date === dateKey &&
+    r.status === "active" &&
+    r.seats_left >= seats &&
+    matchesRoute(r);
+
   const load = async () => {
     setLoading(true);
+    // Fetch all active rides for the date with enough seats, then match
+    // origin/destination against the full route sequence (incl. stops).
     const { data, error } = await supabase
       .from("rides")
       .select("*")
-      .eq("from_location", from)
-      .eq("to_location", to)
       .eq("ride_date", dateKey)
       .eq("status", "active")
       .gte("seats_left", seats)
@@ -126,8 +143,9 @@ const Search = () => {
       setLoading(false);
       return;
     }
-    setRows(data as RideRow[]);
-    await fetchDriversFor(Array.from(new Set((data as RideRow[]).map((r) => r.driver_id))));
+    const filtered = (data as RideRow[]).filter(matchesRoute);
+    setRows(filtered);
+    await fetchDriversFor(Array.from(new Set(filtered.map((r) => r.driver_id))));
     setLoading(false);
   };
 
@@ -138,13 +156,6 @@ const Search = () => {
 
   // Realtime: any new/updated ride that matches filters appears live
   useEffect(() => {
-    const matches = (r: RideRow) =>
-      r.from_location === from &&
-      r.to_location === to &&
-      r.ride_date === dateKey &&
-      r.status === "active" &&
-      r.seats_left >= seats;
-
     const channel = supabase
       .channel(`search-${from}-${to}-${dateKey}`)
       .on(
@@ -172,7 +183,6 @@ const Search = () => {
               if (exists) return prev.map((x) => (x.id === r.id ? r : x));
               return [...prev, r].sort((a, b) => a.depart_time.localeCompare(b.depart_time));
             }
-            // No longer matches — drop it
             return exists ? prev.filter((x) => x.id !== r.id) : prev;
           });
           if (matches(r)) await fetchDriversFor([r.driver_id]);
@@ -191,6 +201,7 @@ const Search = () => {
     return () => {
       supabase.removeChannel(channel);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to, dateKey, seats]);
 
   const rides = useMemo(
