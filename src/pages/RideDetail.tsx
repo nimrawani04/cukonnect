@@ -867,7 +867,7 @@ const RideDetail = () => {
               ) : (
                 <Button
                   onClick={handleBook}
-                  disabled={booking || ride.seats_left < 1}
+                  disabled={booking || ride.seats_left < 1 || !stopOrderValid}
                   className="mt-5 w-full rounded-full bg-accent text-accent-foreground shadow-glow hover:bg-accent/90"
                   size="lg"
                 >
