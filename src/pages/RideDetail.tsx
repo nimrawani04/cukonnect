@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Star, ShieldCheck, Zap, MapPin, Clock, Car, Music2, Wifi, Snowflake,
   MessageCircle, ChevronLeft, Loader2, CheckCircle2, XCircle, AlertCircle,
