@@ -176,6 +176,25 @@ const PublishRide = () => {
       return navigate("/auth");
     }
     if (!data.date) return toast.error("Please pick a date");
+    // Re-validate departure freshness right before publishing
+    {
+      const today = new Date();
+      const isToday =
+        data.date.getFullYear() === today.getFullYear() &&
+        data.date.getMonth() === today.getMonth() &&
+        data.date.getDate() === today.getDate();
+      if (isToday) {
+        const [h, m] = data.departTime.split(":").map(Number);
+        const depart = new Date(data.date);
+        depart.setHours(h || 0, m || 0, 0, 0);
+        if (depart.getTime() <= Date.now()) {
+          return toast.error("Departure time has already passed. Please update it.");
+        }
+      }
+      if (data.arriveTime && data.arriveTime <= data.departTime) {
+        return toast.error("Arrival time must be later than departure.");
+      }
+    }
     setSubmitting(true);
     try {
       const amenities = [
@@ -189,7 +208,7 @@ const PublishRide = () => {
         to_location: data.to,
         ride_date: format(data.date, "yyyy-MM-dd"),
         depart_time: data.departTime,
-        arrive_time: data.arriveTime,
+        arrive_time: data.arriveTime ? data.arriveTime : null,
         price_per_seat: data.pricePerSeat,
         seats_total: data.seats,
         seats_left: data.seats,
