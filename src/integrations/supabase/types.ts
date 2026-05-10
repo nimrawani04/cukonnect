@@ -250,7 +250,7 @@ export type Database = {
       rides: {
         Row: {
           amenities: string[] | null
-          arrive_time: string
+          arrive_time: string | null
           car: string | null
           car_number: string | null
           created_at: string
@@ -273,7 +273,7 @@ export type Database = {
         }
         Insert: {
           amenities?: string[] | null
-          arrive_time: string
+          arrive_time?: string | null
           car?: string | null
           car_number?: string | null
           created_at?: string
@@ -296,7 +296,7 @@ export type Database = {
         }
         Update: {
           amenities?: string[] | null
-          arrive_time?: string
+          arrive_time?: string | null
           car?: string | null
           car_number?: string | null
           created_at?: string
