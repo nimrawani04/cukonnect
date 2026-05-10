@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Star, ShieldCheck, Zap, MapPin, Clock, Car, Music2, Wifi, Snowflake,
   MessageCircle, ChevronLeft, Loader2, CheckCircle2, XCircle, AlertCircle,
@@ -111,6 +111,7 @@ const formatRules = (rules: Record<string, unknown> | null): string[] => {
 const RideDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
@@ -129,8 +130,38 @@ const RideDetail = () => {
     other_count: number;
     unknown_count: number;
   } | null>(null);
+  const [pickup, setPickup] = useState<string>("");
+  const [dropoff, setDropoff] = useState<string>("");
 
   const isOwnRide = !!user && !!ride && user.id === ride.driver_id;
+
+  // Full ordered route: origin → stops → destination
+  const routeSequence = useMemo(() => {
+    if (!ride) return [] as string[];
+    const stopNames = stops.length > 0
+      ? stops.map((s) => s.name)
+      : (ride.stops ?? []);
+    return [ride.from_location, ...stopNames, ride.to_location];
+  }, [ride, stops]);
+
+  // Initialise pickup/drop from URL (?from=&to=) if they match the route, else use endpoints
+  useEffect(() => {
+    if (routeSequence.length < 2) return;
+    const norm = (s: string) => s.trim().toLowerCase();
+    const seq = routeSequence.map(norm);
+    const qFrom = params.get("from");
+    const qTo = params.get("to");
+    const fi = qFrom ? seq.indexOf(norm(qFrom)) : -1;
+    const ti = qTo ? seq.indexOf(norm(qTo)) : -1;
+    setPickup(fi !== -1 ? routeSequence[fi] : routeSequence[0]);
+    setDropoff(ti !== -1 && ti > (fi === -1 ? 0 : fi)
+      ? routeSequence[ti]
+      : routeSequence[routeSequence.length - 1]);
+  }, [routeSequence, params]);
+
+  const pickupIndex = routeSequence.indexOf(pickup);
+  const dropIndex = routeSequence.indexOf(dropoff);
+  const stopOrderValid = pickupIndex !== -1 && dropIndex !== -1 && pickupIndex < dropIndex;
 
   // Live location: driver shares, everyone with access reads
   const liveLocation = useLiveDriverLocation(ride?.id ?? null);
@@ -300,6 +331,10 @@ const RideDetail = () => {
     if (!ride) return;
     if (ride.seats_left < 1) {
       toast.error("No seats left on this ride");
+      return;
+    }
+    if (!stopOrderValid) {
+      toast.error("Pickup must be before drop-off along the route");
       return;
     }
     setBooking(true);
@@ -731,7 +766,60 @@ const RideDetail = () => {
                 )}
               </div>
 
+              {routeSequence.length >= 2 && !isOwnRide && !myBooking && (
+                <div className="mt-6 space-y-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Pickup
+                    </label>
+                    <select
+                      value={pickup}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setPickup(v);
+                        const newPickIdx = routeSequence.indexOf(v);
+                        if (newPickIdx >= dropIndex) {
+                          setDropoff(routeSequence[routeSequence.length - 1]);
+                        }
+                      }}
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {routeSequence.slice(0, -1).map((p) => (
+                        <option key={`p-${p}`} value={p}>{p}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Drop-off
+                    </label>
+                    <select
+                      value={dropoff}
+                      onChange={(e) => setDropoff(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {routeSequence
+                        .map((p, i) => ({ p, i }))
+                        .filter(({ i }) => i > pickupIndex)
+                        .map(({ p }) => (
+                          <option key={`d-${p}`} value={p}>{p}</option>
+                        ))}
+                    </select>
+                  </div>
+                  {!stopOrderValid && (
+                    <p className="text-xs font-medium text-destructive">
+                      Drop-off must come after pickup along the route.
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="mt-6 space-y-3 border-y border-border/60 py-5 text-sm">
+                <Row
+                  label="Trip segment"
+                  value={`${pickup || ride.from_location} → ${dropoff || ride.to_location}`}
+                  muted
+                />
                 <Row
                   label="Seats available"
                   value={`${ride.seats_left} / ${ride.seats_total}`}
@@ -779,7 +867,7 @@ const RideDetail = () => {
               ) : (
                 <Button
                   onClick={handleBook}
-                  disabled={booking || ride.seats_left < 1}
+                  disabled={booking || ride.seats_left < 1 || !stopOrderValid}
                   className="mt-5 w-full rounded-full bg-accent text-accent-foreground shadow-glow hover:bg-accent/90"
                   size="lg"
                 >
