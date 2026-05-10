@@ -820,6 +820,11 @@ const RideDetail = () => {
                   value={`${pickup || ride.from_location} → ${dropoff || ride.to_location}`}
                   muted
                 />
+                <Row
+                  label="Seats available"
+                  value={`${ride.seats_left} / ${ride.seats_total}`}
+                  highlight={ride.seats_left === 0}
+                />
                 {(() => {
                   const held = ride.seats_held ?? 0;
                   const confirmed = Math.max(0, ride.seats_total - ride.seats_left - held);
