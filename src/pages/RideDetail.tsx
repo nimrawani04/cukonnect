@@ -111,6 +111,7 @@ const formatRules = (rules: Record<string, unknown> | null): string[] => {
 const RideDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
