@@ -73,6 +73,13 @@ const PublishRide = () => {
   const { user, loading: authLoading } = useAuth();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  // Tick every 30s so time-based validation re-evaluates in real time
+  const [, setNowTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setNowTick((n) => n + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
   const [data, setData] = useState<FormState>({
     from: "Srinagar",
     to: "Jammu",
