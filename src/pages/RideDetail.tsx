@@ -130,8 +130,38 @@ const RideDetail = () => {
     other_count: number;
     unknown_count: number;
   } | null>(null);
+  const [pickup, setPickup] = useState<string>("");
+  const [dropoff, setDropoff] = useState<string>("");
 
   const isOwnRide = !!user && !!ride && user.id === ride.driver_id;
+
+  // Full ordered route: origin → stops → destination
+  const routeSequence = useMemo(() => {
+    if (!ride) return [] as string[];
+    const stopNames = stops.length > 0
+      ? stops.map((s) => s.name)
+      : (ride.stops ?? []);
+    return [ride.from_location, ...stopNames, ride.to_location];
+  }, [ride, stops]);
+
+  // Initialise pickup/drop from URL (?from=&to=) if they match the route, else use endpoints
+  useEffect(() => {
+    if (routeSequence.length < 2) return;
+    const norm = (s: string) => s.trim().toLowerCase();
+    const seq = routeSequence.map(norm);
+    const qFrom = params.get("from");
+    const qTo = params.get("to");
+    const fi = qFrom ? seq.indexOf(norm(qFrom)) : -1;
+    const ti = qTo ? seq.indexOf(norm(qTo)) : -1;
+    setPickup(fi !== -1 ? routeSequence[fi] : routeSequence[0]);
+    setDropoff(ti !== -1 && ti > (fi === -1 ? 0 : fi)
+      ? routeSequence[ti]
+      : routeSequence[routeSequence.length - 1]);
+  }, [routeSequence, params]);
+
+  const pickupIndex = routeSequence.indexOf(pickup);
+  const dropIndex = routeSequence.indexOf(dropoff);
+  const stopOrderValid = pickupIndex !== -1 && dropIndex !== -1 && pickupIndex < dropIndex;
 
   // Live location: driver shares, everyone with access reads
   const liveLocation = useLiveDriverLocation(ride?.id ?? null);
