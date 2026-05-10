@@ -766,11 +766,59 @@ const RideDetail = () => {
                 )}
               </div>
 
+              {routeSequence.length >= 2 && !isOwnRide && !myBooking && (
+                <div className="mt-6 space-y-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Pickup
+                    </label>
+                    <select
+                      value={pickup}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setPickup(v);
+                        const newPickIdx = routeSequence.indexOf(v);
+                        if (newPickIdx >= dropIndex) {
+                          setDropoff(routeSequence[routeSequence.length - 1]);
+                        }
+                      }}
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {routeSequence.slice(0, -1).map((p) => (
+                        <option key={`p-${p}`} value={p}>{p}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Drop-off
+                    </label>
+                    <select
+                      value={dropoff}
+                      onChange={(e) => setDropoff(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {routeSequence
+                        .map((p, i) => ({ p, i }))
+                        .filter(({ i }) => i > pickupIndex)
+                        .map(({ p }) => (
+                          <option key={`d-${p}`} value={p}>{p}</option>
+                        ))}
+                    </select>
+                  </div>
+                  {!stopOrderValid && (
+                    <p className="text-xs font-medium text-destructive">
+                      Drop-off must come after pickup along the route.
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="mt-6 space-y-3 border-y border-border/60 py-5 text-sm">
                 <Row
-                  label="Seats available"
-                  value={`${ride.seats_left} / ${ride.seats_total}`}
-                  highlight={ride.seats_left === 0}
+                  label="Trip segment"
+                  value={`${pickup || ride.from_location} → ${dropoff || ride.to_location}`}
+                  muted
                 />
                 {(() => {
                   const held = ride.seats_held ?? 0;
