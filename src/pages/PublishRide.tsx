@@ -85,7 +85,7 @@ const PublishRide = () => {
     to: "Jammu",
     date: undefined,
     departTime: "06:30",
-    arriveTime: "14:00",
+    arriveTime: "",
     seats: 3,
     pricePerSeat: 800,
     car: "",
