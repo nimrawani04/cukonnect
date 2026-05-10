@@ -617,7 +617,9 @@ const StepWhen = ({
       </div>
 
       <div>
-        <Label htmlFor="depart">Departure</Label>
+        <Label htmlFor="depart">
+          Departure <span className="text-destructive">*</span>
+        </Label>
         <div className="relative mt-2">
           <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -626,12 +628,15 @@ const StepWhen = ({
             value={data.departTime}
             onChange={(e) => update("departTime", e.target.value)}
             className="h-12 rounded-2xl pl-10"
+            required
           />
         </div>
       </div>
 
       <div>
-        <Label htmlFor="arrive">Estimated arrival</Label>
+        <Label htmlFor="arrive">
+          Estimated arrival <span className="text-muted-foreground">(optional)</span>
+        </Label>
         <div className="relative mt-2">
           <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -641,6 +646,11 @@ const StepWhen = ({
             onChange={(e) => update("arriveTime", e.target.value)}
             className="h-12 rounded-2xl pl-10"
           />
+          {data.arriveTime && data.arriveTime <= data.departTime && (
+            <p className="mt-1 text-xs text-destructive">
+              Arrival must be later than departure.
+            </p>
+          )}
         </div>
       </div>
     </div>
