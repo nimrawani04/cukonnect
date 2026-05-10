@@ -112,7 +112,7 @@ const PublishRide = () => {
       case 1:
         return data.from.trim().length > 1 && data.to.trim().length > 1 && data.from !== data.to;
       case 2: {
-        if (!data.date || !data.departTime || !data.arriveTime) return false;
+        if (!data.date || !data.departTime) return false;
         // If the chosen date is today, depart time must be in the future
         const today = new Date();
         const isToday =
@@ -124,6 +124,10 @@ const PublishRide = () => {
           const depart = new Date(data.date);
           depart.setHours(h || 0, m || 0, 0, 0);
           if (depart.getTime() <= Date.now()) return false;
+        }
+        // Arrival is optional; if provided it must be after departure
+        if (data.arriveTime) {
+          if (data.arriveTime <= data.departTime) return false;
         }
         return true;
       }
@@ -144,12 +148,17 @@ const PublishRide = () => {
       default:
         return false;
     }
-  }, [step, data]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, data, setNowTick]);
 
   const next = () => {
     if (!stepValid) {
       if (step === 2 && data.date) {
-        toast.error("Departure time must be in the future for today's date.");
+        if (data.arriveTime && data.arriveTime <= data.departTime) {
+          toast.error("Arrival time must be later than the departure time.");
+        } else {
+          toast.error("Departure time must be in the future for today's date.");
+        }
       } else if (step === 3) {
         toast.error("Vehicle name and number are required.");
       } else {
